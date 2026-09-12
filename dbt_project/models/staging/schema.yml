@@ -1,0 +1,93 @@
+version: 2
+
+sources:
+  - name: raw
+    description: >
+      Bronze and quarantine tables produced by the ingestion pipeline. Written
+      by ingestion/pipeline.py, not by dbt, so dbt treats them as sources
+      rather than models.
+    meta:
+      owner: data-platform-team
+      contains_pii: true
+      data_classification: confidential
+    tables:
+      - name: bronze_transactions
+        description: >
+          Every record the API returned that passed schema validation,
+          unmodified, plus ingestion metadata. Append-and-upsert only.
+          Duplicates are present and flagged rather than removed.
+        loaded_at_field: ingestion_timestamp
+        freshness:
+          # Source freshness is the producer-side half of the consumer SLA.
+          # Breaching warn_after means the mart is about to go stale.
+          warn_after: {count: 26, period: hour}
+          error_after: {count: 48, period: hour}
+        columns:
+          - name: transaction_id
+            description: Application-level unique identifier, format TXN-NNNN.
+            tests:
+              - unique
+              - not_null
+          - name: is_duplicate
+            description: >
+              1 when this record shares a natural key with an earlier record
+              and is not the surviving row of its group.
+            tests:
+              - accepted_values:
+                  values: [0, 1]
+          - name: status
+            tests:
+              - accepted_values:
+                  values: ['completed', 'pending', 'failed', 'reversed']
+          - name: transaction_type
+            tests:
+              - accepted_values:
+                  values: ['debit', 'credit']
+          - name: currency
+            tests:
+              - accepted_values:
+                  values: ['USD', 'EUR', 'GBP', 'CHF', 'JPY', 'AUD', 'CAD']
+
+      - name: quarantine_transactions
+        description: >
+          Records that failed schema validation, with every violation and the
+          time of ingestion. Restricted to the owning team: it concentrates
+          malformed records that may still carry real account identifiers.
+        columns:
+          - name: error_reason
+            description: All violations for the record, semicolon separated.
+            tests:
+              - not_null
+          - name: error_count
+            tests:
+              - not_null
+
+models:
+  - name: stg_transactions
+    description: >
+      Validated, deduplicated transactions. The single definition of a usable
+      transaction; every mart builds from here.
+    meta:
+      owner: data-platform-team
+      layer: silver
+    columns:
+      - name: transaction_id
+        tests:
+          - unique
+          - not_null
+      - name: natural_key_hash
+        description: >
+          Hash over every field except transaction_id. After deduplication
+          this must be unique: two surviving rows sharing a natural key would
+          mean the deduplication logic has failed.
+        tests:
+          - unique
+          - not_null
+      - name: amount
+        tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              expression: "> 0"
+      - name: transaction_day
+        tests:
+          - not_null

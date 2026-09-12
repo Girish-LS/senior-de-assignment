@@ -1,0 +1,33 @@
+{
+  "source_system": "transactions_api",
+  "snapshot_after_run": 1,
+  "lookback_hours": 72,
+  "run": {
+    "run_id": "run-20260912T174851-c807d7",
+    "run_started_at": "2026-09-12T17:48:51Z",
+    "run_completed_at": "2026-09-12T17:48:55Z",
+    "run_status": "success",
+    "watermark_before": null,
+    "watermark_after": "2024-03-30T21:01:36Z",
+    "effective_filter_from": null,
+    "records_fetched": 352,
+    "records_valid": 349,
+    "records_quarantined": 3,
+    "records_duplicate": 5
+  },
+  "full_history": [
+    {
+      "run_id": "run-20260912T174851-c807d7",
+      "run_started_at": "2026-09-12T17:48:51Z",
+      "run_completed_at": "2026-09-12T17:48:55Z",
+      "run_status": "success",
+      "watermark_before": null,
+      "watermark_after": "2024-03-30T21:01:36Z",
+      "effective_filter_from": null,
+      "records_fetched": 352,
+      "records_valid": 349,
+      "records_quarantined": 3,
+      "records_duplicate": 5
+    }
+  ]
+}

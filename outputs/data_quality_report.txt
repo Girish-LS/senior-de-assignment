@@ -1,0 +1,15 @@
+Data quality assertions
+============================================================
+[PASS] unique_grain: one row per (account_id, transaction_date)
+[PASS] net_amount equals credit minus debit
+[PASS] totals are non-negative
+[PASS] transaction_count is positive
+[PASS] distinct_merchants <= transaction_count
+[PASS] top_category is an accepted merchant category
+[PASS] transaction_date is a YYYY-MM-DD calendar date
+[PASS] account_id matches ACC-NNNN
+[PASS] required columns are not null
+[PASS] transaction_count reconciles with bronze
+[PASS] currencies are accepted values, comma separated and sorted
+============================================================
+11 passed, 0 failed

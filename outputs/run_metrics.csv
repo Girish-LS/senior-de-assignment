@@ -1,0 +1,3 @@
+run_id,run_mode,run_status,run_started_at,run_completed_at,records_fetched,records_valid,records_quarantined,records_duplicate,quarantine_rate,duplicate_rate,http_requests,http_retries,duration_seconds
+run-20260912T174851-c807d7,full,success,2026-09-12T17:48:51Z,2026-09-12T17:48:55Z,352,349,3,5,0.008522727272727272,0.014204545454545454,4,0,4.375
+run-20260912T174856-4972d8,incremental,success,2026-09-12T17:48:56Z,2026-09-12T17:48:56Z,17,15,2,0,0.11764705882352941,0.0,1,0,0.45300000000861473

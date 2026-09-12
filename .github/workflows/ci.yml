@@ -1,0 +1,74 @@
+name: CI
+
+# Quality verified continuously, not discovered by a consumer staring at a
+# broken dashboard. A passing build is also the only real evidence that the
+# project runs somewhere other than the author's machine.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Verify the stated minimum and the version used for development.
+        python-version: ['3.11', '3.12']
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Confirm zero-dependency claim
+        # The project must run on a bare interpreter. If an import of a third
+        # party package ever creeps in, this step fails and the claim in the
+        # README stops being true silently.
+        run: |
+          python -c "import ingestion.models, ingestion.api_client, ingestion.storage, ingestion.dedupe, ingestion.pipeline, ingestion.transform; print('stdlib-only imports OK')"
+          pip list --format=freeze | grep -vE '^(pip|setuptools|wheel)' && exit 1 || echo "no third-party packages installed"
+
+      - name: Run tests
+        run: python -m unittest discover -s tests -v
+
+      - name: Run pipeline against the fixture
+        env:
+          ASSESSMENT_API_BASE_URL: https://example.invalid/rest/v1
+          ASSESSMENT_API_KEY: ci-placeholder
+          ASSESSMENT_AUTH_TOKEN: ci-placeholder
+        run: |
+          python -m ingestion.ingest_transactions --source csv --csv-path data/transactions.csv
+          python -m ingestion.incremental_ingest --source csv --csv-path data/transactions.csv
+
+      - name: Build summary and gate on data quality
+        env:
+          ASSESSMENT_API_BASE_URL: https://example.invalid/rest/v1
+          ASSESSMENT_API_KEY: ci-placeholder
+          ASSESSMENT_AUTH_TOKEN: ci-placeholder
+        # Exits non-zero on any failing assertion, so quality gates the
+        # build rather than producing a report nobody reads.
+        run: python -m ingestion.run_transform
+
+      - name: Verify idempotency
+        env:
+          ASSESSMENT_API_BASE_URL: https://example.invalid/rest/v1
+          ASSESSMENT_API_KEY: ci-placeholder
+          ASSESSMENT_AUTH_TOKEN: ci-placeholder
+        # An incremental model whose second run differs from its first is a
+        # silent correctness bug. Asserting it is the only way to know.
+        run: python -m ingestion.run_transform --check-idempotency
+
+      - name: Check no secrets committed
+        run: |
+          if git ls-files | grep -E '(^|/)(\.env|assignment\.env)$'; then
+            echo "ERROR: an environment file is tracked by git"
+            exit 1
+          fi
+          echo "no environment files tracked"

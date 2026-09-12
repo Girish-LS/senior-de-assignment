@@ -1,0 +1,19 @@
+[project]
+name = "senior-de-assignment"
+version = "1.0.0"
+description = "Payment transaction ingestion and daily account summary"
+requires-python = ">=3.11"
+# No runtime dependencies by design. See requirements.txt.
+dependencies = []
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "UP", "B", "SIM"]

@@ -1,0 +1,17 @@
+# The ingestion pipeline and the SQL transformation path have NO dependencies.
+# They run on a bare Python 3.11+ interpreter:
+#
+#   python -m unittest discover -s tests
+#   python -m ingestion.ingest_transactions
+#   python -m ingestion.run_transform
+#
+# This file is needed only to execute the optional dbt project in
+# dbt_project/, which reproduces the same mart as a dbt model with
+# schema.yml tests. The native SQL path in sql/ and the assertions in
+# ingestion/transform.py are the primary implementation and require nothing.
+#
+# On a corporate-managed machine these must resolve through the internal
+# artifact repository rather than the public index. See README.
+
+dbt-core>=1.8,<2.0
+dbt-duckdb>=1.8,<2.0

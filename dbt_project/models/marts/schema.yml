@@ -1,0 +1,157 @@
+version: 2
+
+models:
+  - name: daily_account_summary
+    description: >
+      Daily account-level summary of completed transactions. One row per
+      account per UTC calendar day.
+
+      Consumers: analysts and product managers. Quarantined records are
+      structurally excluded (they never reach bronze) and duplicate records
+      are resolved in stg_transactions.
+
+      KNOWN LIMITATION: total_debit_amount and total_credit_amount sum across
+      up to seven currencies and are therefore not meaningful as money. The
+      currencies column exposes which currencies contributed. See
+      docs/product_platform_note.md.
+    meta:
+      owner: data-platform-team
+      owner_slack: '#data-platform'
+      layer: gold
+      sla_freshness_hours: 26
+      data_classification: confidential
+      contains_pii: true
+    config:
+      contract:
+        enforced: true
+
+    columns:
+      - name: account_id
+        description: Account identifier, format ACC-NNNN.
+        data_type: varchar
+        constraints:
+          - type: not_null
+        tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              expression: "like 'ACC-____'"
+
+      - name: transaction_date
+        description: >
+          UTC calendar date, truncated from the transaction timestamp. Note
+          this is the business date of the transaction, not the date it was
+          ingested.
+        data_type: date
+        constraints:
+          - type: not_null
+        tests:
+          - not_null
+
+      - name: total_debit_amount
+        description: >
+          Sum of debit amounts for completed transactions on this day.
+          Mixed-currency; see the model-level limitation.
+        tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              expression: ">= 0"
+
+      - name: total_credit_amount
+        description: >
+          Sum of credit amounts for completed transactions on this day.
+          Mixed-currency; see the model-level limitation.
+        tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              expression: ">= 0"
+
+      - name: net_amount
+        description: total_credit_amount minus total_debit_amount.
+        tests:
+          - not_null
+          # Derived columns must agree with their inputs. Tolerance allows for
+          # rounding to two decimal places.
+          - dbt_utils.expression_is_true:
+              expression: >
+                = round(total_credit_amount - total_debit_amount, 2)
+
+      - name: transaction_count
+        description: Count of completed, non-duplicate transactions.
+        tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              expression: "> 0"
+
+      - name: distinct_merchants
+        description: Distinct merchant names for the day.
+        tests:
+          - not_null
+          # A count of distinct values cannot exceed the row count. A classic
+          # fan-out join breaks this before it breaks anything else.
+          - dbt_utils.expression_is_true:
+              expression: "<= transaction_count"
+
+      - name: top_category
+        description: >
+          Merchant category with the highest total debit spend for the day.
+          Spend means debits only: including credits would let a payroll
+          inflow outrank every actual purchase.
+
+          NULL when the day contains credits only, because "highest spend" is
+          undefined with no spend. Ties are broken by category name ascending
+          so the value is stable across runs.
+        tests:
+          - accepted_values:
+              values:
+                - 'e-commerce'
+                - 'travel'
+                - 'food_and_beverage'
+                - 'groceries'
+                - 'electronics'
+                - 'retail'
+                - 'entertainment'
+                - 'health'
+                - 'transportation'
+                - 'home_and_garden'
+                - 'payroll'
+                - 'transfer'
+              config:
+                where: "top_category is not null"
+
+      - name: currencies
+        description: >
+          Distinct currencies contributing to this row, comma separated and
+          sorted. Sorted so the value is comparable between runs; unordered
+          concatenation would differ run to run and falsify the idempotency
+          test.
+        tests:
+          - not_null
+
+      - name: updated_at
+        description: UTC timestamp when this row was last computed.
+        tests:
+          - not_null
+
+    tests:
+      # The grain assertion. If this fails the mart is not what the contract
+      # says it is, and every downstream number is suspect.
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns:
+            - account_id
+            - transaction_date
+
+exposures:
+  - name: account_health_dashboard
+    label: Account Health Dashboard
+    type: dashboard
+    maturity: medium
+    url: https://app.powerbi.com/example/account-health
+    description: >
+      Illustrative downstream consumer. Declared so that lineage runs from
+      source through to consumption, and so a producer can see what breaks
+      before changing the model.
+    depends_on:
+      - ref('daily_account_summary')
+    owner:
+      name: Product Analytics
+      email: product-analytics@example.com

@@ -1,0 +1,152 @@
+# Data contract: daily_account_summary
+#
+# A contract is a producer's commitment to consumers. It is deliberately a
+# separate artefact from developer documentation: it states what is promised,
+# has a different audience, and changes to it require consumer consultation.
+#
+# Version-controlled so changes are reviewable, and reviewed like code.
+
+dataset: daily_account_summary
+version: 1.0.0
+status: active
+
+ownership:
+  team: data-platform-team
+  slack: '#data-platform'
+  email: data-platform@example.com
+  # A data product without a named owner is not a product.
+  accountable_owner: Data Platform Lead
+
+purpose: >
+  Daily account-level summary of completed payment transactions, for analysts
+  and product managers assessing account activity.
+
+grain: One row per account_id per UTC calendar date.
+
+service_level:
+  freshness_sla_hours: 26
+  # Warn before breach, so the team acts before consumers notice.
+  freshness_warn_hours: 20
+  update_frequency: daily
+  availability_target: '99%'
+  support_hours: 'business hours, UK'
+
+upstream:
+  - source: transactions_api
+    type: rest_api
+    layers: [bronze_transactions, stg_transactions]
+
+known_limitations:
+  - id: mixed_currency_totals
+    severity: high
+    description: >
+      total_debit_amount and total_credit_amount sum `amount` across up to
+      seven currencies. The result is arithmetically valid and financially
+      meaningless. The `currencies` column shows which currencies contributed.
+    workaround: >
+      Filter to account-days where `currencies` holds a single value, or treat
+      the totals as activity indicators rather than monetary amounts.
+    resolution: >
+      Requires an FX rate source and an as-of convention. Options are a
+      per-currency grain, or a reporting-currency column alongside native
+      amounts. Product decision outstanding.
+
+  - id: late_arrival_window
+    severity: medium
+    description: >
+      Incremental ingestion filters on business time with a 72-hour lookback.
+      Records arriving at source more than 72 hours after their transaction
+      date are not picked up.
+    resolution: >
+      Requires an insertion timestamp from the source, which would make the
+      watermark exact.
+
+schema:
+  - name: account_id
+    type: string
+    nullable: false
+    description: Account identifier, format ACC-NNNN.
+
+  - name: transaction_date
+    type: date
+    nullable: false
+    description: >
+      UTC calendar date of the transaction. Business date, not ingestion date.
+
+  - name: total_debit_amount
+    type: decimal
+    nullable: false
+    description: >
+      Sum of debit amounts for completed, non-duplicate transactions.
+      Mixed-currency: see known_limitations.
+
+  - name: total_credit_amount
+    type: decimal
+    nullable: false
+    description: >
+      Sum of credit amounts for completed, non-duplicate transactions.
+      Mixed-currency: see known_limitations.
+
+  - name: net_amount
+    type: decimal
+    nullable: false
+    description: total_credit_amount minus total_debit_amount.
+
+  - name: transaction_count
+    type: integer
+    nullable: false
+    description: Count of completed, non-duplicate transactions for the day.
+
+  - name: distinct_merchants
+    type: integer
+    nullable: false
+    description: Count of distinct merchant names for the day.
+
+  - name: top_category
+    type: string
+    nullable: true
+    description: >
+      Merchant category with the highest total debit spend. Spend means
+      debits only: including credits would let a payroll inflow outrank every
+      purchase. NULL when the day contains credits only. Ties broken by
+      category name ascending, so the value is stable across runs.
+
+  - name: currencies
+    type: string
+    nullable: false
+    description: >
+      Distinct currencies contributing to this row, comma separated, sorted
+      ascending.
+
+  - name: updated_at
+    type: timestamp
+    nullable: false
+    description: UTC timestamp when this row was last computed.
+
+quality_guarantees:
+  - Exactly one row per (account_id, transaction_date).
+  - Only status = 'completed' transactions are included.
+  - Duplicate transactions are resolved; each natural key contributes once.
+  - Records failing schema validation are excluded and held in quarantine.
+  - net_amount always equals total_credit_amount minus total_debit_amount.
+  - Rebuilding over unchanged input produces identical output.
+
+governance:
+  data_classification: confidential
+  contains_pii: true
+  # Account identifiers and merchant detail are commercially sensitive even
+  # without cardholder data present.
+  access: Request via #data-platform. Row-level restriction by business unit.
+  retention_days: 2555
+
+change_policy:
+  breaking_changes: >
+    Column removal, type change, or grain change requires 30 days notice to
+    all registered consumers and a major version increment.
+  additive_changes: Minor version increment; no notice required.
+  deprecation_notice_days: 90
+
+consumers:
+  - name: Account Health Dashboard
+    type: dashboard
+    owner: Product Analytics

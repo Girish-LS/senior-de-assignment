@@ -1,0 +1,42 @@
+# ---- Secrets: never commit ----
+.env
+.env.*
+!.env.example
+assignment.env
+assignment.env.*
+!assignment.env.example
+*.env.txt
+profiles.yml
+
+# ---- Local data and build artefacts ----
+warehouse/
+*.duckdb
+*.duckdb.wal
+state/
+logs/
+*.log
+
+# ---- Python ----
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+*.egg-info/
+dist/
+build/
+
+# ---- dbt ----
+dbt_project/target/
+dbt_project/dbt_packages/
+dbt_project/logs/
+
+# ---- OS and editor ----
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/

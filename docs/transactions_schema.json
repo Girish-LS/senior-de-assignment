@@ -1,0 +1,155 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Transaction",
+  "description": "A single payment / banking transaction record served by the Supabase REST API. All records in the dataset must conform to the field rules, formats, and enum constraints defined in this schema. Records that violate these rules must be detected by your pipeline and routed to a quarantine layer.",
+  "type": "object",
+  "required": [
+    "transaction_id",
+    "account_id",
+    "transaction_date",
+    "amount",
+    "currency",
+    "transaction_type",
+    "merchant_name",
+    "merchant_category",
+    "status",
+    "country_code"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "transaction_id": {
+      "type": "string",
+      "description": "Application-level unique identifier. Format: TXN-NNNN. Use this as your primary key \u2014 not the Supabase internal 'id' field.",
+      "pattern": "^TXN-[A-Z0-9]+$",
+      "examples": [
+        "TXN-0001",
+        "TXN-0099",
+        "TXN-0344"
+      ]
+    },
+    "account_id": {
+      "type": "string",
+      "description": "Account identifier. Always in the format ACC-NNNN. The dataset contains 20 accounts: ACC-1001 through ACC-1020.",
+      "pattern": "^ACC-\\d{4}$",
+      "examples": [
+        "ACC-1001",
+        "ACC-1010",
+        "ACC-1020"
+      ]
+    },
+    "transaction_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp. Must use 'T' as the date/time separator and 'Z' as the timezone designator. Must be a real calendar date. All valid records fall within 2024-01-01T00:00:00Z and 2024-03-31T23:59:59Z.",
+      "pattern": "^\\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])T([01]\\d|2[0-3]):[0-5]\\d:[0-5]\\dZ$",
+      "examples": [
+        "2024-01-15T08:23:11Z",
+        "2024-03-31T22:59:00Z"
+      ]
+    },
+    "amount": {
+      "type": "number",
+      "description": "Transaction amount in the specified currency. Must be strictly positive (> 0, not >= 0). Rounded to 2 decimal places.",
+      "exclusiveMinimum": 0,
+      "multipleOf": 0.01,
+      "examples": [
+        142.5,
+        3200.0,
+        19.99
+      ]
+    },
+    "currency": {
+      "type": "string",
+      "description": "ISO 4217 three-letter currency code. Case-sensitive \u2014 must be uppercase. Only the seven currencies listed below are valid.",
+      "enum": [
+        "USD",
+        "EUR",
+        "GBP",
+        "CHF",
+        "JPY",
+        "AUD",
+        "CAD"
+      ],
+      "examples": [
+        "USD",
+        "EUR",
+        "GBP"
+      ]
+    },
+    "transaction_type": {
+      "type": "string",
+      "description": "Direction of the transaction. Case-sensitive \u2014 must be lowercase. 'debit' or 'credit' only.",
+      "enum": [
+        "debit",
+        "credit"
+      ],
+      "examples": [
+        "debit",
+        "credit"
+      ]
+    },
+    "merchant_name": {
+      "type": "string",
+      "description": "Name of the merchant or counterparty. Must contain at least one non-whitespace character. A string of spaces passes a length check but fails this requirement.",
+      "minLength": 1,
+      "pattern": ".*\\S.*",
+      "examples": [
+        "Amazon",
+        "Lufthansa",
+        "Whole Foods",
+        "ACH Transfer"
+      ]
+    },
+    "merchant_category": {
+      "type": "string",
+      "description": "Category of the merchant. Case-sensitive \u2014 must be exactly as listed below. 12 allowed values.",
+      "enum": [
+        "e-commerce",
+        "travel",
+        "food_and_beverage",
+        "groceries",
+        "electronics",
+        "retail",
+        "entertainment",
+        "health",
+        "transportation",
+        "home_and_garden",
+        "payroll",
+        "transfer"
+      ],
+      "examples": [
+        "e-commerce",
+        "groceries",
+        "payroll"
+      ]
+    },
+    "status": {
+      "type": "string",
+      "description": "Processing status. Case-sensitive \u2014 must be lowercase. For aggregations, only 'completed' records should be included in financial summaries.",
+      "enum": [
+        "completed",
+        "pending",
+        "failed",
+        "reversed"
+      ],
+      "examples": [
+        "completed",
+        "pending"
+      ]
+    },
+    "country_code": {
+      "type": "string",
+      "description": "ISO 3166-1 alpha-2 country code of the merchant location. Must be exactly two uppercase ASCII letters AND an officially assigned code. Format alone is not sufficient \u2014 'UK' and 'EN' both match the pattern but are not valid assigned codes.",
+      "pattern": "^[A-Z]{2}$",
+      "minLength": 2,
+      "maxLength": 2,
+      "examples": [
+        "US",
+        "GB",
+        "DE",
+        "JP",
+        "AU"
+      ]
+    }
+  }
+}

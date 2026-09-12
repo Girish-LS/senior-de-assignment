@@ -1,0 +1,6 @@
+natural_key_hash,duplicate_transaction_id,surviving_transaction_id,account_id,transaction_date,amount,currency,transaction_type,merchant_name,merchant_category,status,country_code
+6cdde137bf990a9d47815791224fa4c2,TXN-0352,TXN-0079,ACC-1003,2024-02-20T10:44:01Z,43.05,USD,debit,Sony Electronics,electronics,completed,US
+03c934c0a20d4876e48bdddd0c9b14fb,TXN-0350,TXN-0178,ACC-1020,2024-03-04T16:44:23Z,345.74,EUR,debit,IKEA,retail,completed,GB
+e69e23a2bad5971f1060095522bf6858,TXN-0351,TXN-0180,ACC-1011,2024-03-17T14:55:04Z,28.47,USD,debit,Sony Electronics,electronics,completed,US
+77f20fb8e0616dd4e2bda148bdd08527,TXN-0348,TXN-0194,ACC-1009,2024-02-19T21:50:15Z,1481.14,EUR,credit,Shell Gas,transportation,completed,US
+c53ae9832d41858db14290004be97bb8,TXN-0349,TXN-0319,ACC-1003,2024-03-04T21:17:09Z,593.75,GBP,debit,Spotify,entertainment,failed,US
