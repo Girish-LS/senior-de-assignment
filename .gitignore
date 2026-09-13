@@ -46,3 +46,5 @@ Thumbs.db
 desktop.ini
 .vscode/
 .idea/
+
+dbt_project/.user.yml
