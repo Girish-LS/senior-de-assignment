@@ -2,7 +2,7 @@
 ========================================================================
 PIPELINE RUN TRANSCRIPT
 ========================================================================
-Captured    : 2026-09-12T23:18:50+05:30
+Captured    : 2026-09-13T21:02:00+05:30
 Source      : api
 Python      : Python 3.12.3
 Platform    : Microsoft Windows NT 10.0.26100.0
@@ -80,7 +80,7 @@ duplicate group on natural key 693a9cc8a1d5a27b15e12326330a9bcb: ['TXN-0217', 'T
 .....watermark 'not-a-date' is unparseable; using it as-is
 ...................................
 ----------------------------------------------------------------------
-Ran 65 tests in 0.628s
+Ran 65 tests in 0.556s
 System.Management.Automation.RemoteException
 OK
 
@@ -88,28 +88,28 @@ OK
 Task 1  full ingestion
   python -m ingestion.ingest_transactions
 ------------------------------------------------------------------------
-2026-09-12T23:18:51Z INFO     ingest settings: {"api_base_url": "https://fgbjekjqnbmtkmeewexb.supabase.co/rest/v1", "api_key": "set (46 chars)", "auth_token_same_as_key": true, "page_size": 100, "max_retries": 5, "backoff_base_seconds": 0.5, "request_timeout_seconds": 30.0, "lookback_hours": 72, "initial_watermark": "1970-01-01T00:00:00Z", "env_file_used": ".env"}
-2026-09-12T23:18:51Z INFO     ingestion.pipeline mode=full: reading all records, no date filter
-2026-09-12T23:18:53Z INFO     ingestion.api_client fetched page offset=0 size=100 records=100
-2026-09-12T23:18:54Z INFO     ingestion.api_client fetched page offset=100 size=100 records=100
-2026-09-12T23:18:55Z INFO     ingestion.api_client fetched page offset=200 size=100 records=100
-2026-09-12T23:18:55Z INFO     ingestion.api_client fetched page offset=300 size=100 records=52
-2026-09-12T23:18:55Z INFO     ingestion.pipeline fetched 352 records
-2026-09-12T23:18:55Z WARNING  ingestion.dedupe duplicate group on natural key c53ae9832d41858db14290004be97bb8: ['TXN-0319', 'TXN-0349'] (surviving: TXN-0319)
-2026-09-12T23:18:55Z WARNING  ingestion.dedupe duplicate group on natural key 03c934c0a20d4876e48bdddd0c9b14fb: ['TXN-0178', 'TXN-0350'] (surviving: TXN-0178)
-2026-09-12T23:18:55Z WARNING  ingestion.dedupe duplicate group on natural key 6cdde137bf990a9d47815791224fa4c2: ['TXN-0079', 'TXN-0352'] (surviving: TXN-0079)
-2026-09-12T23:18:55Z WARNING  ingestion.dedupe duplicate group on natural key 77f20fb8e0616dd4e2bda148bdd08527: ['TXN-0194', 'TXN-0348'] (surviving: TXN-0194)
-2026-09-12T23:18:55Z WARNING  ingestion.dedupe duplicate group on natural key e69e23a2bad5971f1060095522bf6858: ['TXN-0180', 'TXN-0351'] (surviving: TXN-0180)
-2026-09-12T23:18:55Z INFO     ingestion.pipeline run run-20260912T174851-c807d7 succeeded: {"run_id": "run-20260912T174851-c807d7", "status": "success", "mode": "full", "source": "api", "watermark_before": null, "effective_filter_from": null, "watermark_after": "2024-03-30T21:01:36Z", "duration_seconds": 4.375, "http_requests": 4, "http_retries": 0, "fetched": 352, "valid": 349, "quarantined": 3, "duplicate": 5}
+2026-09-13T21:02:01Z INFO     ingest settings: {"api_base_url": "https://<project>.supabase.co/rest/v1", "api_key": "set (46 chars)", "auth_token_same_as_key": true, "page_size": 100, "max_retries": 5, "backoff_base_seconds": 0.5, "request_timeout_seconds": 30.0, "lookback_hours": 72, "initial_watermark": "1970-01-01T00:00:00Z", "env_file_used": ".env"}
+2026-09-13T21:02:01Z INFO     ingestion.pipeline mode=full: reading all records, no date filter
+2026-09-13T21:02:03Z INFO     ingestion.api_client fetched page offset=0 size=100 records=100
+2026-09-13T21:02:04Z INFO     ingestion.api_client fetched page offset=100 size=100 records=100
+2026-09-13T21:02:05Z INFO     ingestion.api_client fetched page offset=200 size=100 records=100
+2026-09-13T21:02:06Z INFO     ingestion.api_client fetched page offset=300 size=100 records=52
+2026-09-13T21:02:06Z INFO     ingestion.pipeline fetched 352 records
+2026-09-13T21:02:06Z WARNING  ingestion.dedupe duplicate group on natural key c53ae9832d41858db14290004be97bb8: ['TXN-0319', 'TXN-0349'] (surviving: TXN-0319)
+2026-09-13T21:02:06Z WARNING  ingestion.dedupe duplicate group on natural key 03c934c0a20d4876e48bdddd0c9b14fb: ['TXN-0178', 'TXN-0350'] (surviving: TXN-0178)
+2026-09-13T21:02:06Z WARNING  ingestion.dedupe duplicate group on natural key 6cdde137bf990a9d47815791224fa4c2: ['TXN-0079', 'TXN-0352'] (surviving: TXN-0079)
+2026-09-13T21:02:06Z WARNING  ingestion.dedupe duplicate group on natural key 77f20fb8e0616dd4e2bda148bdd08527: ['TXN-0194', 'TXN-0348'] (surviving: TXN-0194)
+2026-09-13T21:02:06Z WARNING  ingestion.dedupe duplicate group on natural key e69e23a2bad5971f1060095522bf6858: ['TXN-0180', 'TXN-0351'] (surviving: TXN-0180)
+2026-09-13T21:02:06Z INFO     ingestion.pipeline run run-20260913T153201-2845f3 succeeded: {"run_id": "run-20260913T153201-2845f3", "status": "success", "mode": "full", "source": "api", "watermark_before": null, "effective_filter_from": null, "watermark_after": "2024-03-30T21:01:36Z", "duration_seconds": 4.344, "http_requests": 4, "http_retries": 0, "fetched": 352, "valid": 349, "quarantined": 3, "duplicate": 5}
 {
-  "run_id": "run-20260912T174851-c807d7",
+  "run_id": "run-20260913T153201-2845f3",
   "status": "success",
   "mode": "full",
   "source": "api",
   "watermark_before": null,
   "effective_filter_from": null,
   "watermark_after": "2024-03-30T21:01:36Z",
-  "duration_seconds": 4.375,
+  "duration_seconds": 4.344,
   "http_requests": 4,
   "http_retries": 0,
   "fetched": 352,
@@ -122,19 +122,19 @@ Task 1  full ingestion
 Task 3  incremental ingestion
   python -m ingestion.incremental_ingest
 ------------------------------------------------------------------------
-2026-09-12T23:18:56Z INFO     ingestion.pipeline mode=incremental: watermark=2024-03-30T21:01:36Z lookback=72h filter=gte.2024-03-27T21:01:36Z
-2026-09-12T23:18:56Z INFO     ingestion.api_client fetched page offset=0 size=100 records=17
-2026-09-12T23:18:56Z INFO     ingestion.pipeline fetched 17 records
-2026-09-12T23:18:56Z INFO     ingestion.pipeline run run-20260912T174856-4972d8 succeeded: {"run_id": "run-20260912T174856-4972d8", "status": "success", "mode": "incremental", "source": "api", "watermark_before": "2024-03-30T21:01:36Z", "effective_filter_from": "2024-03-27T21:01:36Z", "watermark_after": "2024-03-30T21:01:36Z", "duration_seconds": 0.453, "http_requests": 1, "http_retries": 0, "fetched": 17, "valid": 15, "quarantined": 2, "duplicate": 0}
+2026-09-13T21:02:06Z INFO     ingestion.pipeline mode=incremental: watermark=2024-03-30T21:01:36Z lookback=72h filter=gte.2024-03-27T21:01:36Z
+2026-09-13T21:02:07Z INFO     ingestion.api_client fetched page offset=0 size=100 records=17
+2026-09-13T21:02:07Z INFO     ingestion.pipeline fetched 17 records
+2026-09-13T21:02:07Z INFO     ingestion.pipeline run run-20260913T153206-55243e succeeded: {"run_id": "run-20260913T153206-55243e", "status": "success", "mode": "incremental", "source": "api", "watermark_before": "2024-03-30T21:01:36Z", "effective_filter_from": "2024-03-27T21:01:36Z", "watermark_after": "2024-03-30T21:01:36Z", "duration_seconds": 0.609, "http_requests": 1, "http_retries": 0, "fetched": 17, "valid": 15, "quarantined": 2, "duplicate": 0}
 {
-  "run_id": "run-20260912T174856-4972d8",
+  "run_id": "run-20260913T153206-55243e",
   "status": "success",
   "mode": "incremental",
   "source": "api",
   "watermark_before": "2024-03-30T21:01:36Z",
   "effective_filter_from": "2024-03-27T21:01:36Z",
   "watermark_after": "2024-03-30T21:01:36Z",
-  "duration_seconds": 0.453,
+  "duration_seconds": 0.609,
   "http_requests": 1,
   "http_retries": 0,
   "fetched": 17,
@@ -147,7 +147,7 @@ Task 3  incremental ingestion
 Task 2  transform and assert
   python -m ingestion.run_transform
 ------------------------------------------------------------------------
-2026-09-12T23:18:57Z INFO     ingestion.transform daily_account_summary rebuilt: 238 rows (since=0000-01-01T00:00:00Z)
+2026-09-13T21:02:07Z INFO     ingestion.transform daily_account_summary rebuilt: 238 rows (since=0000-01-01T00:00:00Z)
 daily_account_summary: 238 rows
 
 Data quality assertions
@@ -183,3 +183,5 @@ data_quality_report.txt        11 assertions
 ========================================================================
 RUN COMPLETE
 ========================================================================
+
+
