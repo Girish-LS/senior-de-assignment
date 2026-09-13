@@ -6,11 +6,17 @@ requires-python = ">=3.11"
 # No runtime dependencies by design. See requirements.txt.
 dependencies = []
 
+# The suite is written against unittest, which needs no install. This block
+# only makes `pytest` work too, for anyone who prefers it - the tests are
+# unittest.TestCase subclasses, so pytest collects them unchanged.
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
 addopts = "-q"
 
+# Lint configuration. Not run in CI, which deliberately installs nothing -
+# see .github/workflows/ci.yml. Committed so style is defined rather than
+# implied if anyone does lint the project.
 [tool.ruff]
 line-length = 88
 target-version = "py311"
