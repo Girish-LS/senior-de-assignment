@@ -33,7 +33,7 @@ models:
           - type: not_null
         tests:
           - not_null
-          - dbt_utils.expression_is_true:
+          - expression_is_true:
               expression: "like 'ACC-____'"
 
       - name: transaction_date
@@ -51,44 +51,49 @@ models:
         description: >
           Sum of debit amounts for completed transactions on this day.
           Mixed-currency; see the model-level limitation.
+        data_type: decimal(18,2)
         tests:
           - not_null
-          - dbt_utils.expression_is_true:
+          - expression_is_true:
               expression: ">= 0"
 
       - name: total_credit_amount
         description: >
           Sum of credit amounts for completed transactions on this day.
           Mixed-currency; see the model-level limitation.
+        data_type: decimal(18,2)
         tests:
           - not_null
-          - dbt_utils.expression_is_true:
+          - expression_is_true:
               expression: ">= 0"
 
       - name: net_amount
         description: total_credit_amount minus total_debit_amount.
+        data_type: decimal(18,2)
         tests:
           - not_null
           # Derived columns must agree with their inputs. Tolerance allows for
           # rounding to two decimal places.
-          - dbt_utils.expression_is_true:
+          - expression_is_true:
               expression: >
                 = round(total_credit_amount - total_debit_amount, 2)
 
       - name: transaction_count
         description: Count of completed, non-duplicate transactions.
+        data_type: bigint
         tests:
           - not_null
-          - dbt_utils.expression_is_true:
+          - expression_is_true:
               expression: "> 0"
 
       - name: distinct_merchants
         description: Distinct merchant names for the day.
+        data_type: bigint
         tests:
           - not_null
           # A count of distinct values cannot exceed the row count. A classic
           # fan-out join breaks this before it breaks anything else.
-          - dbt_utils.expression_is_true:
+          - expression_is_true:
               expression: "<= transaction_count"
 
       - name: top_category
@@ -100,6 +105,7 @@ models:
           NULL when the day contains credits only, because "highest spend" is
           undefined with no spend. Ties are broken by category name ascending
           so the value is stable across runs.
+        data_type: varchar
         tests:
           - accepted_values:
               values:
@@ -124,18 +130,20 @@ models:
           sorted. Sorted so the value is comparable between runs; unordered
           concatenation would differ run to run and falsify the idempotency
           test.
+        data_type: varchar
         tests:
           - not_null
 
       - name: updated_at
         description: UTC timestamp when this row was last computed.
+        data_type: timestamp with time zone
         tests:
           - not_null
 
     tests:
       # The grain assertion. If this fails the mart is not what the contract
       # says it is, and every downstream number is suspect.
-      - dbt_utils.unique_combination_of_columns:
+      - unique_combination_of_columns:
           combination_of_columns:
             - account_id
             - transaction_date

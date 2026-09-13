@@ -3,9 +3,9 @@
   "snapshot_after_run": 2,
   "lookback_hours": 72,
   "run": {
-    "run_id": "run-20260912T174856-4972d8",
-    "run_started_at": "2026-09-12T17:48:56Z",
-    "run_completed_at": "2026-09-12T17:48:56Z",
+    "run_id": "run-20260913T140827-a4ce36",
+    "run_started_at": "2026-09-13T14:08:27Z",
+    "run_completed_at": "2026-09-13T14:08:28Z",
     "run_status": "success",
     "watermark_before": "2024-03-30T21:01:36Z",
     "watermark_after": "2024-03-30T21:01:36Z",
@@ -17,9 +17,9 @@
   },
   "full_history": [
     {
-      "run_id": "run-20260912T174851-c807d7",
-      "run_started_at": "2026-09-12T17:48:51Z",
-      "run_completed_at": "2026-09-12T17:48:55Z",
+      "run_id": "run-20260913T140817-deb25f",
+      "run_started_at": "2026-09-13T14:08:17Z",
+      "run_completed_at": "2026-09-13T14:08:21Z",
       "run_status": "success",
       "watermark_before": null,
       "watermark_after": "2024-03-30T21:01:36Z",
@@ -30,9 +30,9 @@
       "records_duplicate": 5
     },
     {
-      "run_id": "run-20260912T174856-4972d8",
-      "run_started_at": "2026-09-12T17:48:56Z",
-      "run_completed_at": "2026-09-12T17:48:56Z",
+      "run_id": "run-20260913T140827-a4ce36",
+      "run_started_at": "2026-09-13T14:08:27Z",
+      "run_completed_at": "2026-09-13T14:08:28Z",
       "run_status": "success",
       "watermark_before": "2024-03-30T21:01:36Z",
       "watermark_after": "2024-03-30T21:01:36Z",

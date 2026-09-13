@@ -1,3 +1,12 @@
-packages:
-  - package: dbt-labs/dbt_utils
-    version: [">=1.3.0", "<2.0.0"]
+# No external packages.
+#
+# This project previously depended on dbt-labs/dbt_utils for two generic
+# tests. `dbt deps` resolves from hub.getdbt.com, which corporate proxies
+# block (403), so the dependency made the project unrunnable in the
+# environment it is meant to demonstrate.
+#
+# Both tests are reimplemented in macros/generic_tests.sql. On a network
+# with hub access, restoring the package and deleting that file is a
+# two-line change.
+
+packages: []

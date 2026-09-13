@@ -125,9 +125,10 @@ select
     -- figure adds USD to JPY and is not meaningful as money. Implemented as
     -- specified; the `currencies` column exposes the problem to consumers.
     -- See docs/product_platform_note.md for the production options.
-    round(a.total_debit_amount, 2)                            as total_debit_amount,
-    round(a.total_credit_amount, 2)                           as total_credit_amount,
-    round(a.total_credit_amount - a.total_debit_amount, 2)    as net_amount,
+    cast(round(a.total_debit_amount, 2) as decimal(18,2))     as total_debit_amount,
+    cast(round(a.total_credit_amount, 2) as decimal(18,2))    as total_credit_amount,
+    cast(round(a.total_credit_amount - a.total_debit_amount, 2)
+         as decimal(18,2))                                    as net_amount,
 
     a.transaction_count,
     a.distinct_merchants,

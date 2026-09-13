@@ -190,7 +190,7 @@ class PipelineTestCase(unittest.TestCase):
         )
         # Redirect warehouse and outputs into the temp directory.
         object.__setattr__(self.settings, "_root", root)
-        self.warehouse = root / "warehouse" / "transactions.duckdb"
+        self.warehouse = root / "warehouse" / "transactions.sqlite"
         type(self.settings).warehouse_path = property(
             lambda s, p=self.warehouse: p
         )

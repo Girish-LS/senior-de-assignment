@@ -10,6 +10,25 @@ sources:
       owner: data-platform-team
       contains_pii: true
       data_classification: confidential
+      # dbt-duckdb reads these as external CSV rather than as database tables.
+      #
+      # The pipeline writes SQLite (sqlite3 is standard library; duckdb is
+      # not, and the pipeline is dependency-free). DuckDB can attach a SQLite
+      # file, but only via the sqlite_scanner extension, and extension
+      # downloads are blocked on corporate networks - extensions.duckdb.org
+      # returns 403 behind the proxy. Depending on it would mean the dbt path
+      # works on an open network and fails everywhere else.
+      #
+      # CSV needs no extension, so the project runs anywhere. Produced by
+      # scripts/export_for_dbt.py, which must run before dbt.
+      # all_varchar preserves bronze fidelity. Bronze stores every field as
+      # the raw text the API sent, deliberately - it is the unmodified record.
+      # Letting DuckDB infer types on read would silently reinterpret that
+      # text (transaction_date becomes TIMESTAMP, amount becomes DOUBLE),
+      # which both breaks string handling in staging and reintroduces the
+      # float-for-money problem the pipeline avoids. Casting is staging's
+      # job, done explicitly, once.
+      external_location: "read_csv('../warehouse/export/{name}.csv', header=true, all_varchar=true)"
     tables:
       - name: bronze_transactions
         description: >
@@ -86,7 +105,7 @@ models:
       - name: amount
         tests:
           - not_null
-          - dbt_utils.expression_is_true:
+          - expression_is_true:
               expression: "> 0"
       - name: transaction_day
         tests:

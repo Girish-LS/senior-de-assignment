@@ -362,3 +362,93 @@ warehouse that was already populated, which proves nothing.
 
 No credentials appear in the transcript. The pipeline logs the API key's
 length, never its value.
+
+---
+
+## The dbt path
+
+The mart is implemented twice, on purpose: as hand-written SQL in
+`sql/daily_account_summary.sql`, and as a dbt model in
+`dbt_project/models/marts/`. Both were run and their outputs compared row by
+row.
+
+**257 rows each, identical grain, zero value mismatches** across
+`total_debit_amount`, `total_credit_amount`, `net_amount`,
+`transaction_count`, `distinct_merchants`, `top_category` and `currencies`.
+Two independently written implementations agreeing is stronger evidence of
+correctness than either passing its own tests.
+
+### Running it
+
+```bash
+pip install -r requirements.txt          # dbt-core and dbt-duckdb
+cp dbt_project/profiles.yml.example ~/.dbt/profiles.yml
+
+python scripts/export_for_dbt.py         # SQLite tables -> CSV
+cd dbt_project && dbt build --target duckdb
+```
+
+Result: `PASS=34 WARN=0 ERROR=0 SKIP=0`. Two models (`stg_transactions`,
+`daily_account_summary`), 32 data tests, one exposure.
+
+### Three environment problems, and how they were solved
+
+These are worth stating because each would make the dbt path fail on a
+locked-down network while appearing to work on an open one. That asymmetry is
+the dangerous kind of bug: it passes on the developer's laptop.
+
+**1. The warehouse is SQLite, not DuckDB.** The pipeline uses the standard
+library only, and `sqlite3` ships with Python while `duckdb` does not. DuckDB
+can attach a SQLite file, but only through the `sqlite_scanner` extension, and
+`extensions.duckdb.org` returns 403 behind a corporate proxy. `dbt` therefore
+reads CSV exports produced by `scripts/export_for_dbt.py`. CSV needs no
+extension, so the project runs anywhere. The file is named
+`transactions.sqlite`, not `.duckdb`, so nobody opens it with the wrong client.
+
+**2. `dbt deps` is blocked.** `hub.getdbt.com` also returns 403. The project
+used two `dbt_utils` generic tests; both are reimplemented in
+`dbt_project/macros/generic_tests.sql` and `packages.yml` is now empty. A
+project that cannot run `dbt deps` cannot run at all, so the dependency made
+the dbt path unrunnable in exactly the environment meant to demonstrate it.
+
+**3. CSV type inference corrupts bronze fidelity.** Bronze stores every field
+as the raw text the API sent, deliberately. Letting DuckDB infer types on read
+turned `transaction_date` into a TIMESTAMP and `amount` into a DOUBLE —
+reintroducing the float-for-money problem the pipeline avoids. Sources are
+read with `all_varchar=true`; casting is staging's job, done explicitly, once.
+
+### Model contracts
+
+`daily_account_summary` has `contract: enforced: true`, so dbt refuses to build
+if the model's output types drift from the declared schema. It caught a real
+mismatch on first run: `SUM` widened the money columns to `DECIMAL(38,2)`
+against a contract of `DECIMAL(18,2)`. Fixed by casting in the model rather
+than by loosening the contract — the contract is the commitment to consumers,
+so the model should satisfy it, not the reverse.
+
+Money is `DECIMAL(18,2)` and never `DOUBLE`, which the contract now guarantees
+to anyone reading the schema.
+
+### Idempotency
+
+Running `dbt build` twice leaves every business value unchanged:
+
+```
+rows                       : 257 -> 257
+digest EXCLUDING updated_at: eb20ea256aff319e -> eb20ea256aff319e   same
+digest INCLUDING updated_at: a5fa8cf2f2866d12 -> 7d09714136054fb4   changed
+```
+
+`updated_at` is *expected* to move — it records when the row was last computed
+and is what a consumer uses to reason about freshness. A frozen `updated_at`
+would be the actual bug.
+
+### Lineage documentation
+
+`docs/dbt/index.html` is committed: a self-contained, offline lineage browser
+covering source-to-mart lineage, column descriptions, test coverage, and the
+Power BI exposure. Open it in a browser; nothing needs to be running.
+
+This is the concrete answer to the design note's question about exposing
+lineage, ownership and quality status to consumers — an artefact rather than a
+paragraph.

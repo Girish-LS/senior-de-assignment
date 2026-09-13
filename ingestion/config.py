@@ -115,7 +115,11 @@ class Settings:
 
     @property
     def warehouse_path(self) -> Path:
-        return REPO_ROOT / "warehouse" / "transactions.duckdb"
+        # SQLite, not DuckDB. The pipeline uses the standard library only, and
+        # sqlite3 ships with Python while duckdb does not. Named accurately so
+        # nobody opens it with the wrong client. dbt reads CSV exports of
+        # these tables rather than the file itself; see scripts/export_for_dbt.py.
+        return REPO_ROOT / "warehouse" / "transactions.sqlite"
 
     @property
     def state_dir(self) -> Path:

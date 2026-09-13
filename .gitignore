@@ -10,6 +10,7 @@ profiles.yml
 
 # ---- Local data and build artefacts ----
 warehouse/
+*.sqlite
 *.duckdb
 *.duckdb.wal
 state/
@@ -31,6 +32,8 @@ build/
 
 # ---- dbt ----
 dbt_project/target/
+# docs/dbt/index.html is committed on purpose: it is the lineage artefact
+# a reviewer opens without running anything.
 dbt_project/dbt_packages/
 dbt_project/logs/
 
