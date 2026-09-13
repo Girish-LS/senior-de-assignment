@@ -156,9 +156,25 @@ One mart is what the assessment asks for and more would be scope creep.
 
 I used Claude as a pair programmer throughout: to profile the dataset, to
 probe the API before writing the client, to draft implementation and tests,
-and as a reviewer for design decisions. Every decision in this repository is
-one I can defend, and several are ones where I pushed back on the first
-suggestion.
+and as a reviewer for design decisions.
+
+Being precise about the division of labour, since a vague disclosure is worth
+less than an accurate one. Most of the code was drafted by the model. The
+direction was mine: I set the scope, decided which trade-offs to accept, and
+rejected suggestions I disagreed with — including the recommendation to move
+off a corporate-managed machine to avoid its network restrictions, and the
+argument for a leaner design record than the one in
+`docs/architecture_decision_record.md`. Two artefacts here exist because I
+asked for them rather than because they were proposed: the captured run
+transcript in `outputs/run_transcript.txt`, and `scripts/verify_submission.py`,
+which audits the submission against the assessment's own checklist.
+
+Where I accepted a recommendation, it was after understanding the reasoning,
+not because it arrived first. The watermark design is the clearest example: I
+questioned why `gte` rather than `gt`, and the answer — that `gt` silently
+drops any record sharing the boundary timestamp, which is why the load must
+upsert — is the reason those three decisions are documented as one
+interlocking design rather than three independent choices.
 
 Verification was independent of generation, which is the part that matters:
 
@@ -170,11 +186,22 @@ Verification was independent of generation, which is the part that matters:
   design and each would otherwise have been a real defect: `amount` arrives as
   a JSON string, filtered responses return HTTP 206 rather than 200, and an
   invalid `limit` returns 200 with the parameter silently ignored.
+- The mart is implemented twice — hand-written SQL against SQLite and a dbt
+  model against DuckDB — and the outputs compared row by row: 257 rows each,
+  identical grain, zero value mismatches. Two independent implementations
+  agreeing is stronger evidence than either passing its own tests.
 - Two bugs were caught by tests that existed because the expected answer was
   established first. Strict-mode enum validation quarantined all 352 records;
   a semicolon inside a SQL comment broke statement splitting. Neither would
   have been visible from output that merely looked plausible.
 - Idempotency is asserted by rebuilding and comparing, not claimed.
+
+One assumption the tooling did not catch, and the process did: the supplied
+CSV backup is not an export of the live API. It has the same shape — 352
+records, 3 invalid, 5 duplicate pairs — but different content, with entirely
+disjoint duplicate pairs. Diffing the two rather than assuming equivalence is
+what surfaced it, and it means the committed outputs are generated from the
+API rather than from the fixture.
 
 The discipline I would state plainly: generated code is a draft until
 something other than the generator has confirmed it. Establishing the expected
