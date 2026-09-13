@@ -15,7 +15,9 @@ and supports incremental ingestion with watermark handling.
 git clone <repo-url>
 cd senior-de-assignment
 
-cp assignment.env.example assignment.env   # then fill in the API values
+# Only needed to hit the live API. For a credential-free run, skip this
+# and use the offline fixture shown below.
+cp assignment.env.example assignment.env   # values are in the assessment brief
 # Windows PowerShell: Copy-Item assignment.env.example assignment.env
 
 python -m unittest discover -s tests       # 65 tests
@@ -25,18 +27,35 @@ python -m ingestion.run_transform          # Task 2: build and assert
 python -m ingestion.export_outputs         # write sample outputs
 ```
 
-No network? Every command accepts the offline fixture. Note that the fixture
-is a *regenerated* dataset, not a snapshot: it has the same shape as the live
-API (352 records, 3 invalid, 5 duplicate pairs) but different record content,
-so figures produced from it will not match figures produced from the API.
-Committed sample outputs are generated from the live API. See "Fixture versus
-live API" below.
+### No credentials? Run the whole thing offline
+
+Every stage accepts the bundled fixture, and the offline path requires **no
+API credentials and no network at all** — configuration is only validated
+where it is actually used, so a reviewer without the API values can still
+execute the full pipeline end to end:
 
 ```bash
+python -m unittest discover -s tests
 python -m ingestion.ingest_transactions --source csv --csv-path data/transactions.csv
+python -m ingestion.incremental_ingest  --source csv --csv-path data/transactions.csv
+python -m ingestion.run_transform
+python -m ingestion.export_outputs
 ```
 
-`make all` runs the whole sequence.
+Or simply `make all`, which runs that sequence from a clean state.
+
+**One caveat on the numbers.** The fixture is a *regenerated* dataset, not an
+export: it has the same shape as the live API (352 records, 3 invalid, 5
+duplicate pairs) but different record content, so figures produced from it
+will not match the committed samples, which come from the API. See "Fixture
+versus live API" below.
+
+### Reading the results without running anything
+
+`outputs/` holds committed samples from a live-API run, and
+`outputs/run_transcript.txt` is the captured console output of a complete
+execution including the test suite. Nothing needs to be run to see what the
+pipeline produces.
 
 ---
 
@@ -221,7 +240,6 @@ senior-de-assignment/
 │   └── models/marts/             # daily_account_summary + schema.yml
 ├── docs/
 │   ├── product_platform_note.md  # Task 4
-│   ├── dbt/index.html            # generated lineage browser
 │   └── transactions_schema.json
 ├── ingestion/
 │   ├── api_client.py             # pagination, retry, 206 handling
@@ -232,7 +250,7 @@ senior-de-assignment/
 │   ├── pipeline.py               # orchestration and watermark logic
 │   ├── storage.py                # bronze, quarantine, watermark, metrics
 │   └── transform.py              # summary build and assertions
-├── outputs/                      # committed samples + run transcript
+├── outputs/                      # samples, run transcript, dbt build result
 ├── scripts/
 │   ├── probe_api.py              # endpoint characterisation, run first
 │   ├── export_for_dbt.py         # SQLite tables -> CSV for dbt
@@ -454,10 +472,21 @@ would be the actual bug.
 
 ### Lineage documentation
 
-`docs/dbt/index.html` is committed: a self-contained, offline lineage browser
-covering source-to-mart lineage, column descriptions, test coverage, and the
-Power BI exposure. Open it in a browser; nothing needs to be running.
+```bash
+make dbt-docs      # or: cd dbt_project && dbt docs generate --target duckdb
+```
 
-This is the concrete answer to the design note's question about exposing
-lineage, ownership and quality status to consumers — an artefact rather than a
-paragraph.
+Then open `dbt_project/target/index.html`: a self-contained, offline lineage
+browser covering source-to-mart lineage, column descriptions, test coverage
+and the Power BI exposure.
+
+**It is generated, not committed.** It is a build artefact of
+`dbt_project/target/`, which is gitignored, and a committed copy goes stale the
+moment a model changes — documentation that is confidently wrong is worse than
+documentation that is absent. `outputs/dbt_build.txt` records that the build
+ran and passed, which is the part worth keeping in version control.
+
+The lineage graph is the concrete answer to the design note's question about
+exposing lineage, ownership and quality status to consumers. In production it
+would be generated in CI and published to a static site, so it is regenerated
+on every merge and cannot drift.
