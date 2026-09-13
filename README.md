@@ -18,7 +18,7 @@ cd senior-de-assignment
 cp assignment.env.example assignment.env   # then fill in the API values
 # Windows PowerShell: Copy-Item assignment.env.example assignment.env
 
-python -m unittest discover -s tests       # 60 tests
+python -m unittest discover -s tests       # 65 tests
 python -m ingestion.ingest_transactions    # Task 1: full ingestion
 python -m ingestion.incremental_ingest     # Task 3: incremental run
 python -m ingestion.run_transform          # Task 2: build and assert
@@ -87,7 +87,7 @@ correctly on `2024-03-30T22:35:29Z`. This is asserted by a test
 |---|---|---|
 | Standard library only | The target machine blocks the public package index. The resulting property — clone and run, no install — is also the strongest possible answer to reproducibility | pydantic's error aggregation, tenacity's retry primitives |
 | `sqlite3` | Ships with Python. At 352 rows the analytical difference is immaterial, and the SQL is portable | DuckDB's columnar performance and richer SQL |
-| dbt project authored, not executed | `dbt-core` could not be installed. The project is complete and committed; eleven equivalent assertions run natively | Executed dbt tests, `dbt docs` lineage graph |
+| Mart implemented twice, in SQL and in dbt | The SQL path came first, because `dbt-core` could not initially be installed. Once it could, both were run and compared: 257 rows each, zero value mismatches | Nothing; the duplication became the strongest correctness evidence in the submission |
 | `urllib` over `requests` | Zero dependency, and the probe proved it works against this API | Convenience; more verbose code |
 | Hand-written validation | Every rule legible without knowing a library's coercion semantics | More code; risk of inconsistency, mitigated by per-rule tests |
 | Airflow DAG illustrative | No target environment | A deployed orchestrator |
@@ -181,7 +181,7 @@ make.
 ## Testing approach
 
 ```bash
-python -m unittest discover -s tests -v     # 60 tests
+python -m unittest discover -s tests -v     # 65 tests
 python -m ingestion.run_transform           # 11 data quality assertions
 python -m ingestion.run_transform --check-idempotency
 ```
@@ -216,11 +216,12 @@ senior-de-assignment/
 │   └── transactions_pipeline.py  # illustrative Airflow DAG
 ├── data/
 │   └── transactions.csv          # offline fixture (same shape, different rows)
-├── dbt_project/                  # authored, not executed here
+├── dbt_project/                  # dbt build: PASS=34, 0 errors
 │   ├── models/staging/           # stg_transactions + schema.yml
 │   └── models/marts/             # daily_account_summary + schema.yml
 ├── docs/
 │   ├── product_platform_note.md  # Task 4
+│   ├── dbt/index.html            # generated lineage browser
 │   └── transactions_schema.json
 ├── ingestion/
 │   ├── api_client.py             # pagination, retry, 206 handling
@@ -231,10 +232,15 @@ senior-de-assignment/
 │   ├── pipeline.py               # orchestration and watermark logic
 │   ├── storage.py                # bronze, quarantine, watermark, metrics
 │   └── transform.py              # summary build and assertions
-├── outputs/                      # committed samples
+├── outputs/                      # committed samples + run transcript
+├── scripts/
+│   ├── probe_api.py              # endpoint characterisation, run first
+│   ├── export_for_dbt.py         # SQLite tables -> CSV for dbt
+│   ├── capture_run.ps1 / .sh     # reproducible run transcript
+│   └── verify_submission.py      # audits this repo against the brief
 ├── sql/
 │   └── daily_account_summary.sql
-└── tests/                        # 60 tests
+└── tests/                        # 65 tests
 ```
 
 ---
@@ -265,8 +271,11 @@ first thing I would raise before productionising.
 **Late arrivals beyond 72 hours are missed.** Inherent to watermarking on
 business time. Resolved by an insertion timestamp at source.
 
-**dbt not executed.** Environment constraint. The project is committed and the
-equivalent assertions run natively.
+**Two stores and an export step between them.** The pipeline writes SQLite;
+dbt reads CSV exports of those tables, because DuckDB can only attach SQLite
+through an extension whose download is blocked behind a corporate proxy. Less
+elegant than a single engine. Production would export Parquet, which preserves
+types.
 
 **Airflow DAG not deployed.** No target environment.
 

@@ -125,15 +125,24 @@ minimum.
 
 ## Trade-offs made because of the time limit and the environment
 
-**SQLite rather than DuckDB, and dbt authored but not executed.** The machine
-available blocks the public package index, so neither `duckdb` nor `dbt-core`
-could be installed. Rather than ship something unrunnable, the pipeline uses
-only Python's standard library and executes the same transformation through
-`sqlite3`. The dbt project is complete and committed; its eleven-assertion
-equivalent runs natively so the two definitions cannot drift silently. This is
-a real gap and I am not presenting it as a virtue — though the resulting
-property, that the project runs anywhere with no install step, is genuinely
-useful.
+**SQLite rather than DuckDB for the pipeline.** The machine available blocks
+the public package index, so neither `duckdb` nor `dbt-core` could initially be
+installed. Rather than ship something unrunnable, the pipeline uses only
+Python's standard library and executes the transformation through `sqlite3`.
+
+The internal artifact repository was configured later and dbt did install, so
+the dbt project was run: `PASS=34 WARN=0 ERROR=0`. The two implementations were
+then compared row by row — 257 rows each, identical grain, zero value
+mismatches — which turned an environment constraint into the strongest
+correctness evidence in the submission. Two implementations agreeing do not
+share a bug.
+
+What remains a genuine compromise is the seam: dbt reads CSV exports of the
+SQLite tables rather than the database itself, because DuckDB can only attach
+SQLite via an extension whose download the proxy blocks. Two stores and an
+export step is less elegant than one engine, and CSV loses type information on
+the way across — mitigated by reading with `all_varchar=true` so casting stays
+explicit in staging, and Parquet would be the production choice.
 
 **Hand-written validation rather than Pydantic.** Same cause. The rules are
 identical. The cost is more code; the benefit is that every rule is legible
