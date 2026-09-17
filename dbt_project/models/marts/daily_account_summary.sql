@@ -134,9 +134,10 @@ select
     a.distinct_merchants,
     t.merchant_category                                       as top_category,
     a.currencies,
-    {{ dbt.current_timestamp() }}                             as updated_at
+    cast({{ dbt.current_timestamp() }} as timestamp)                             as updated_at
 
 from aggregated a
 left join top_category t
        on t.account_id     = a.account_id
       and t.transaction_day = a.transaction_day
+

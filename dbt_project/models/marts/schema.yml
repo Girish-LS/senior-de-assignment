@@ -28,7 +28,7 @@ models:
     columns:
       - name: account_id
         description: Account identifier, format ACC-NNNN.
-        data_type: varchar
+        data_type: string
         constraints:
           - type: not_null
         tests:
@@ -105,7 +105,7 @@ models:
           NULL when the day contains credits only, because "highest spend" is
           undefined with no spend. Ties are broken by category name ascending
           so the value is stable across runs.
-        data_type: varchar
+        data_type: string
         tests:
           - accepted_values:
               values:
@@ -130,13 +130,13 @@ models:
           sorted. Sorted so the value is comparable between runs; unordered
           concatenation would differ run to run and falsify the idempotency
           test.
-        data_type: varchar
+        data_type: string
         tests:
           - not_null
 
       - name: updated_at
         description: UTC timestamp when this row was last computed.
-        data_type: timestamp with time zone
+        data_type: timestamp
         tests:
           - not_null
 
@@ -163,3 +163,5 @@ exposures:
     owner:
       name: Product Analytics
       email: product-analytics@example.com
+
+

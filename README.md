@@ -490,3 +490,67 @@ The lineage graph is the concrete answer to the design note's question about
 exposing lineage, ownership and quality status to consumers. In production it
 would be generated in CI and published to a static site, so it is regenerated
 on every merge and cannot drift.
+
+---
+
+## Verified on Azure Databricks
+
+The dbt project was run against **both** targets from the same models:
+
+| Target | Result |
+|---|---|
+| DuckDB (local, default) | `PASS=34 WARN=0 ERROR=0` |
+| Azure Databricks SQL warehouse | `PASS=34 WARN=0 ERROR=0` |
+
+Switching is a profile change, not a rewrite. The Databricks target reads
+bronze and quarantine from Unity Catalog tables rather than CSV, which is what
+the `external_location` source config is for on DuckDB and what Databricks
+ignores in favour of normal catalog resolution.
+
+### Three portability defects, none visible until the second target ran
+
+The README previously claimed the models were portable. Running them proved
+that claim was only half true, and the failures are worth recording because
+each is a class of problem rather than a typo.
+
+**1. `timestamp with time zone` does not exist in Spark SQL.** DuckDB's
+`current_timestamp` returns a timezone-aware timestamp and the contract
+declared it as such. Databricks has only `TIMESTAMP`, which is already
+timezone-aware, so no single declaration satisfied both engines. Resolved by
+casting in the model so both produce a plain `timestamp`, and declaring that.
+
+The general point: **a dbt model contract is declared in the warehouse's own
+type system.** A contract is therefore engine-specific unless the model
+actively normalises its output types, which is a real constraint on portable
+modelling and is not obvious until a second adapter is attached.
+
+**2. Spark requires a length on `VARCHAR`.** `cast(null as varchar)` is valid
+in DuckDB and fails on Databricks with `DATATYPE_MISSING_SIZE`. Resolved by
+declaring `string`, which Spark accepts natively and DuckDB treats as an alias.
+
+**3. `listagg` ignores `order_by` on Spark — unresolved, and documented.**
+dbt warns `order_by_clause is not supported for listagg on Spark/Databricks`.
+The `currencies` column is therefore sorted on DuckDB and unsorted on
+Databricks. The test passed on both because it asserts accepted values rather
+than ordering.
+
+This is left as it is rather than papered over. Fixing it properly means
+either a Spark-specific implementation (`array_join(array_sort(...))`) or
+dropping the ordering guarantee from the contract. Both are defensible; what
+is not defensible is a column whose ordering silently differs by engine while
+the documentation claims otherwise. It is recorded here and in the contract.
+
+### A fourth, less interesting but more common
+
+Editing files with PowerShell's `Set-Content -Encoding utf8` writes a UTF-8
+byte-order mark. DuckDB tolerates a BOM at the start of a model; Spark's
+parser does not, and reports `Syntax error at or near ''`. The same class of
+problem appears in `ingestion/config.py`, which reads env files as
+`utf-8-sig` for exactly this reason.
+
+### Why the default target is still DuckDB
+
+Reproducibility. A reviewer can clone this repository and run the full
+pipeline and the dbt project with no account, no cluster and no credentials.
+The Databricks target proves the models port; the DuckDB target means nobody
+has to take that on trust to see the results.

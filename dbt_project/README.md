@@ -1,6 +1,16 @@
 # dbt project
 
-**Status: executed. `dbt build` returns PASS=34 WARN=0 ERROR=0 SKIP=0.**
+**Status: executed on two warehouses.**
+
+| Target | Result |
+|---|---|
+| DuckDB (default) | `PASS=34 WARN=0 ERROR=0` |
+| Azure Databricks SQL warehouse | `PASS=34 WARN=0 ERROR=0` |
+
+Three portability defects surfaced only when the second target was
+attached - a Spark-incompatible contract type, a `VARCHAR` needing a
+length, and `listagg` ignoring `order_by`. See the README section
+"Verified on Azure Databricks"; the third is documented rather than fixed.
 
 Two models (`stg_transactions`, `daily_account_summary`), 32 data tests, one
 exposure, and an enforced model contract on the mart.
