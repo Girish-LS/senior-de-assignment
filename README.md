@@ -298,6 +298,12 @@ senior-de-assignment/
 │   └── transactions_pipeline.py  # illustrative Airflow DAG
 ├── data/
 │   └── transactions.csv          # offline fixture (same shape, different rows)
+├── databricks/                   # the Databricks path
+│   ├── README.md                 # Git folder + secret scope setup
+│   ├── notebooks/
+│   │   └── 01_ingest_bronze.py   # API -> Delta bronze on serverless
+│   └── jobs/
+│       └── transactions_pipeline_job.json  # two-task Job (not deployed)
 ├── dbt_project/                  # dbt build: PASS=34, 0 errors
 │   ├── models/staging/           # stg_transactions + schema.yml
 │   └── models/marts/             # daily_account_summary + schema.yml
@@ -316,6 +322,7 @@ senior-de-assignment/
 ├── outputs/                      # samples, run transcript, dbt build result
 ├── scripts/
 │   ├── probe_api.py              # endpoint characterisation, run first
+│   ├── ingest_to_databricks.py   # API -> Delta bronze, as an external process
 │   ├── export_for_dbt.py         # SQLite tables -> CSV for dbt
 │   ├── capture_run.ps1 / .sh     # reproducible run transcript
 │   └── verify_submission.py      # audits this repo against the brief

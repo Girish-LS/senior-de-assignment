@@ -48,3 +48,5 @@ desktop.ini
 .idea/
 
 dbt_project/.user.yml
+
+docs/dbt/
