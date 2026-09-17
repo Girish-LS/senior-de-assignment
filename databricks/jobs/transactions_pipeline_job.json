@@ -1,0 +1,85 @@
+{
+  "name": "transactions-bronze-to-gold",
+  "description": "API to bronze (notebook), then silver and gold (dbt). Decomposed into independently retryable tasks so a failure localises rather than requiring a full re-run.",
+
+  "schedule": {
+    "quartz_cron_expression": "0 0 6 * * ?",
+    "timezone_id": "UTC",
+    "pause_status": "UNPAUSED"
+  },
+
+  "email_notifications": {
+    "on_failure": ["data-platform-team@example.com"],
+    "no_alert_for_skipped_runs": false
+  },
+
+  "health": {
+    "rules": [
+      {
+        "metric": "RUN_DURATION_SECONDS",
+        "op": "GREATER_THAN",
+        "value": 1800
+      }
+    ]
+  },
+
+  "max_concurrent_runs": 1,
+
+  "tasks": [
+    {
+      "task_key": "ingest_bronze",
+      "description": "Fetch from the REST API, validate, quarantine, deduplicate, write Delta bronze, advance the watermark. Imports the repository's validation modules rather than reimplementing them.",
+      "notebook_task": {
+        "notebook_path": "databricks/notebooks/01_ingest_bronze",
+        "source": "GIT",
+        "base_parameters": {
+          "mode": "incremental",
+          "catalog": "workspace",
+          "raw_schema": "raw",
+          "secret_scope": "transactions-api",
+          "lookback_hours": "72"
+        }
+      },
+      "timeout_seconds": 1800,
+      "max_retries": 3,
+      "min_retry_interval_millis": 60000,
+      "retry_on_timeout": true
+    },
+    {
+      "task_key": "dbt_silver_gold",
+      "description": "Build stg_transactions (silver) and daily_account_summary (gold), then run 32 data tests and the enforced model contract.",
+      "depends_on": [{ "task_key": "ingest_bronze" }],
+      "dbt_task": {
+        "project_directory": "dbt_project",
+        "profiles_directory": "dbt_project",
+        "commands": [
+          "dbt deps",
+          "dbt build --target databricks"
+        ],
+        "source": "GIT",
+        "warehouse_id": "REPLACE_WITH_WAREHOUSE_ID"
+      },
+      "timeout_seconds": 1800,
+      "max_retries": 1,
+      "libraries": [
+        { "pypi": { "package": "dbt-databricks>=1.8.0" } }
+      ]
+    }
+  ],
+
+  "git_source": {
+    "git_url": "https://github.com/Girish-LS/senior-de-assignment",
+    "git_provider": "gitHub",
+    "git_branch": "main"
+  },
+
+  "queue": { "enabled": true },
+
+  "_notes": {
+    "why_two_tasks": "Ingestion and transformation fail for different reasons and are owned differently. Splitting them means a transient API failure retries the fetch without rebuilding the mart, and a failing dbt test does not re-hit the API. One long script cannot do either.",
+    "why_retries_differ": "Ingestion retries three times because API failures are usually transient. dbt retries once because a failing data quality test is not transient - it means the data is wrong and a human should look.",
+    "why_max_concurrent_runs_1": "The watermark is shared mutable state. Two concurrent runs could both read the same value and one would overwrite the other's advance.",
+    "why_health_rule": "A run taking far longer than usual is a leading indicator of source degradation, visible before an outright failure.",
+    "not_deployed": "This definition is committed as documentation of the intended orchestration. The notebook and the dbt project were both executed manually against a live workspace; the Job wrapper itself was not deployed."
+  }
+}
