@@ -328,7 +328,7 @@ python scripts/ingest_to_databricks.py            # incremental</code></pre>
   <h3>Validation and quarantine</h3>
   <div class="panel">
     <ul>
-      <li>Validation enforces strict UTC timestamp format, positive decimal amount, accepted enumerations, non-blank merchant names, and assigned ISO 3166-1 alpha-2 country codes.</li>
+      <li>Validation enforces strict UTC timestamp format, positive decimal amount, accepted enumerations, non-blank merchant names, and a country-code membership check against the repository's ISO 3166-1 alpha-2 assigned-code set.</li>
       <li>Every failure reason is retained; validation does not stop at the first error.</li>
       <li>Quarantine rows store the raw JSON record, a semicolon-separated error message, error count, and failed field list.</li>
     </ul>
