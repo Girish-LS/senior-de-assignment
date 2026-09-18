@@ -322,7 +322,7 @@ python scripts/ingest_to_databricks.py            # incremental</code></pre>
     <p><b>Why compute the watermark from valid records only?</b> This dataset contains invalid records dated <code>2024-04-15</code> and <code>2024-11-31</code>, later than every valid record. A raw-record watermark would jump to November and silently stop future ingestion.</p>
   </div>
   <div class="decision warn">
-    <p><b>Zero-record guard.</b> In this repository's Databricks implementation, incremental reads use a <code>gte</code> boundary plus a trailing lookback window that is intended to include the watermark-setting record. Within that specific design, a zero-row incremental window is treated as suspicious rather than healthy. The documented rationale is the historical malformed-filter case <code>gte.gte.&lt;timestamp&gt;</code>, which would otherwise appear as a successful but silently empty run.</p>
+    <p><b>Zero-record guard.</b> A repository-specific Databricks design decision is to treat a zero-row incremental lookback window as suspicious rather than healthy, because this path uses a <code>gte</code> boundary plus a trailing lookback window intended to include the watermark-setting record. The documented rationale is the historical malformed-filter case <code>gte.gte.&lt;timestamp&gt;</code>, which would otherwise appear as a successful but silently empty run.</p>
   </div>
 
   <h3>Validation and quarantine</h3>
@@ -392,9 +392,9 @@ dbt build --target databricks</code></pre>
   <p>Committed output in <code>outputs/databricks/dbt_build.txt</code> shows <b>2 models</b>, <b>32 data tests</b>, <b>1 exposure</b>, and final status <b>PASS=34 WARN=0 ERROR=0</b>.</p>
 
   <h2>6. Orchestration job definition and task dependencies</h2>
-  <p class="small">The repository includes a documented Databricks Job definition in <code>databricks/jobs/transactions_pipeline_job.json</code>; the diagram below summarizes that intended schedule, concurrency, health rule, and task dependency layout.</p>
+  <p class="small">See <code>databricks/jobs/transactions_pipeline_job.json</code> for the documented job-definition values. The diagram below highlights the two-task dependency chain only.</p>
   <div class="diagram no-break">
-    <svg viewBox="0 0 900 220" width="100%" xmlns="http://www.w3.org/2000/svg">
+    <svg viewBox="0 0 740 220" width="100%" xmlns="http://www.w3.org/2000/svg">
       <defs>
         <marker id="arrow2" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="strokeWidth">
           <path d="M0,0 L10,5 L0,10 z" fill="#1f6feb"/>
@@ -410,15 +410,6 @@ dbt build --target databricks</code></pre>
       <text x="565" y="132" text-anchor="middle" font-size="12" font-family="Arial" fill="#52606d">dbt task</text>
       <text x="565" y="150" text-anchor="middle" font-size="12" font-family="Arial" fill="#52606d">depends_on = ingest_bronze</text>
 
-      <rect x="740" y="30" width="130" height="46" rx="12" fill="#fff8db" stroke="#b8860b" stroke-width="2"/>
-      <text x="805" y="59" text-anchor="middle" font-size="12" font-family="Arial" fill="#7c5d00">06:00 UTC daily</text>
-
-      <rect x="740" y="88" width="130" height="46" rx="12" fill="#fdecea" stroke="#b42318" stroke-width="2"/>
-      <text x="805" y="116" text-anchor="middle" font-size="12" font-family="Arial" fill="#b42318">max_concurrent_runs = 1</text>
-
-      <rect x="740" y="146" width="130" height="46" rx="12" fill="#eafaf1" stroke="#067647" stroke-width="2"/>
-      <text x="805" y="174" text-anchor="middle" font-size="12" font-family="Arial" fill="#067647">alert if run &gt; 30 min</text>
-
       <line x1="295" y1="125" x2="430" y2="125" stroke="#1f6feb" stroke-width="3" marker-end="url(#arrow2)"/>
     </svg>
   </div>
@@ -433,6 +424,7 @@ dbt build --target databricks</code></pre>
       </tbody>
     </table>
   </div>
+  <p>The same JSON also documents a daily <code>06:00 UTC</code> schedule, <code>max_concurrent_runs = 1</code>, failure email notifications, and a run-duration health rule that triggers when runtime exceeds <code>1800</code> seconds.</p>
 
   <div class="section-break"></div>
   <h2>7. Portability findings from the DuckDB-first dbt path to Databricks</h2>
