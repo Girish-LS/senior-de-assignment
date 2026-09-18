@@ -420,11 +420,11 @@ dbt build --target databricks</code></pre>
   <div class="table-wrap no-break">
     <table>
       <thead>
-        <tr><th style="width:20%">Task</th><th style="width:18%">Type</th><th style="width:15%">Retries</th><th style="width:20%">Depends on</th><th>Reasoning</th></tr>
+        <tr><th style="width:20%">Task</th><th style="width:18%">Type</th><th style="width:15%">Operational settings</th><th style="width:20%">Depends on</th><th>Reasoning</th></tr>
       </thead>
       <tbody>
-        <tr><td><code>ingest_bronze</code></td><td>Notebook task</td><td><code>databricks/jobs/transactions_pipeline_job.json</code>: task key <code>ingest_bronze</code> has <code>max_retries=3</code> and <code>min_retry_interval_millis=60000</code></td><td>—</td><td>API/network failures are often transient and should not force a full pipeline rerun.</td></tr>
-        <tr><td><code>dbt_silver_gold</code></td><td>dbt task</td><td><code>databricks/jobs/transactions_pipeline_job.json</code>: task key <code>dbt_silver_gold</code> has <code>max_retries=1</code></td><td><code>depends_on: ingest_bronze</code></td><td>Failing data tests are usually not transient; retrying fetch plus transformation together would be wasteful and misleading.</td></tr>
+        <tr><td><code>ingest_bronze</code></td><td>Notebook task</td><td>See the referenced job JSON for retry and timeout values.</td><td>—</td><td>API/network failures are often transient and should not force a full pipeline rerun.</td></tr>
+        <tr><td><code>dbt_silver_gold</code></td><td>dbt task</td><td>See the referenced job JSON for retry and timeout values.</td><td><code>depends_on: ingest_bronze</code></td><td>Failing data tests are usually not transient; retrying fetch plus transformation together would be wasteful and misleading.</td></tr>
       </tbody>
     </table>
   </div>
