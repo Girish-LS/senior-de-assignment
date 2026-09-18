@@ -322,7 +322,7 @@ python scripts/ingest_to_databricks.py            # incremental</code></pre>
     <p><b>Why compute the watermark from valid records only?</b> This dataset contains invalid records dated <code>2024-04-15</code> and <code>2024-11-31</code>, later than every valid record. A raw-record watermark would jump to November and silently stop future ingestion.</p>
   </div>
   <div class="decision warn">
-    <p><b>Zero-record guard.</b> The Databricks-path design treats an incremental lookback window that returns zero rows as suspicious rather than healthy, because that window should still contain the watermark-setting record. The documented rationale is the historical malformed-filter case <code>gte.gte.&lt;timestamp&gt;</code>, which would otherwise appear as a successful but silently empty run.</p>
+    <p><b>Zero-record guard.</b> In this repository's Databricks implementation, incremental reads use a <code>gte</code> boundary plus a trailing lookback window that is intended to include the watermark-setting record. Within that specific design, a zero-row incremental window is treated as suspicious rather than healthy. The documented rationale is the historical malformed-filter case <code>gte.gte.&lt;timestamp&gt;</code>, which would otherwise appear as a successful but silently empty run.</p>
   </div>
 
   <h3>Validation and quarantine</h3>
