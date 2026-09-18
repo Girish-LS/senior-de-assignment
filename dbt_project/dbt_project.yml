@@ -22,13 +22,13 @@ models:
       # Staging is a thin, non-materialised layer: rename, cast, filter.
       # Views keep it cheap and guarantee it always reflects bronze.
       +materialized: view
-      +schema: staging
+      +schema: silver
 
     marts:
       # Marts are consumer-facing and must be queryable with predictable
       # latency, so they are tables rather than views.
       +materialized: table
-      +schema: marts
+      +schema: gold
 
 vars:
   # Lookback applied by the incremental mart, matching the ingestion

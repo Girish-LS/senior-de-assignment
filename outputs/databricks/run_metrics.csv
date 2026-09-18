@@ -1,0 +1,3 @@
+run_id,run_mode,run_status,watermark_before,watermark_after,effective_filter_from,records_fetched,records_valid,records_quarantined,records_duplicate,duration_seconds,started_at
+run-20260918T041539-7f3a72,full,success,,2024-03-30T21:01:36Z,,352,349,3,5,35.562,2026-09-18T04:15:39Z
+run-20260918T041625-745cf8,incremental,success,2024-03-30T21:01:36Z,2024-03-30T21:01:36Z,2024-03-27T21:01:36Z,17,15,2,0,23.016,2026-09-18T04:16:25Z

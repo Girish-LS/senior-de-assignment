@@ -7,14 +7,14 @@ tables in Unity Catalog. dbt builds staging and the daily account summary on
 Databricks.**
 
 ```
-REST API ──► ingest_to_databricks.py ──► Delta: raw.bronze_transactions
-             validate · quarantine            raw.quarantine_transactions
-             dedupe   · watermark              raw.pipeline_watermark
-                                               raw.ingestion_run_metrics
+REST API ──► ingestion (notebook or script) ──► bronze.bronze_transactions
+             validate · quarantine                  bronze.quarantine_transactions
+             dedupe   · watermark                   bronze.pipeline_watermark
+                                                    bronze.ingestion_run_metrics
                           │
                           ▼
-             dbt ──► staging.stg_transactions  (dedupe, cast)
-                 └──► marts.daily_account_summary  (contract, 32 tests)
+             dbt ──► silver.stg_transactions        (dedupe, cast)
+                 └──► gold.daily_account_summary    (contract, 32 tests)
 ```
 
 Two ways to run the Databricks path. Both write the same Delta tables.
@@ -39,6 +39,17 @@ cd dbt_project && dbt build --target databricks      # Task 2
 `databricks/jobs/transactions_pipeline_job.json` wires the notebook and dbt
 into a scheduled two-task Job — committed as documentation of the intended
 orchestration rather than deployed.
+
+| Layer | Object |
+|---|---|
+| Bronze | `workspace.bronze.bronze_transactions`, `quarantine_transactions`, `pipeline_watermark`, `ingestion_run_metrics` |
+| Silver | `workspace.silver.stg_transactions` |
+| Gold | `workspace.gold.daily_account_summary` |
+
+Schema names match the layer names, which needed overriding dbt's default
+`generate_schema_name` — it concatenates the target schema with a model's
+custom schema rather than replacing it. `databricks/README.md` explains the
+trade-off.
 
 Verified: 352 fetched, 349 valid, 3 quarantined, 5 duplicates flagged,
 watermark `2024-03-30T21:01:36Z`. Second run fetches 17 inside the lookback and
@@ -320,6 +331,7 @@ senior-de-assignment/
 │   ├── storage.py                # bronze, quarantine, watermark, metrics
 │   └── transform.py              # summary build and assertions
 ├── outputs/                      # samples, run transcript, dbt build result
+│   └── databricks/               # evidence the Databricks path ran
 ├── scripts/
 │   ├── probe_api.py              # endpoint characterisation, run first
 │   ├── ingest_to_databricks.py   # API -> Delta bronze, as an external process

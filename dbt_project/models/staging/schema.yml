@@ -2,6 +2,11 @@ version: 2
 
 sources:
   - name: raw
+    # Declared explicitly. Without this, dbt resolves a source's schema from
+    # the source NAME, which would put bronze in a schema called `raw` while
+    # the models sat in `silver` and `gold` - two naming schemes in one
+    # warehouse. The source keeps its short name; the tables live in `bronze`.
+    schema: bronze
     description: >
       Bronze and quarantine tables produced by the ingestion pipeline. Written
       by ingestion/pipeline.py, not by dbt, so dbt treats them as sources

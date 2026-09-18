@@ -35,7 +35,7 @@
         "base_parameters": {
           "mode": "incremental",
           "catalog": "workspace",
-          "raw_schema": "raw",
+          "bronze_schema": "bronze",
           "secret_scope": "transactions-api",
           "lookback_hours": "72"
         }

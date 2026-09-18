@@ -1,0 +1,15 @@
+﻿{
+  "run_id": "run-20260918T041625-745cf8",
+  "target": "workspace.bronze",
+  "mode": "incremental",
+  "watermark_before": "2024-03-30T21:01:36Z",
+  "effective_filter_from": "2024-03-27T21:01:36Z",
+  "watermark_after": "2024-03-30T21:01:36Z",
+  "duration_seconds": 23.016,
+  "http_requests": 1,
+  "http_retries": 0,
+  "fetched": 17,
+  "valid": 15,
+  "quarantined": 2,
+  "duplicate": 0
+}

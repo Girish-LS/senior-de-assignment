@@ -1,0 +1,15 @@
+﻿Idempotency check - the assessment's explicit Task 3 requirement
+================================================================
+
+bronze rows before rerun : 349
+bronze rows after rerun  : 349
+result                   : PASS - zero new rows
+
+The incremental run re-reads a 72-hour trailing window, so it deliberately
+re-fetches records already in bronze. MERGE INTO matches them on
+transaction_id and updates in place rather than inserting duplicates.
+
+This matters because the watermark filter uses gte rather than gt: with gt,
+any record sharing the exact maximum timestamp of the previous run would be
+skipped permanently. gte re-reads the boundary, which is only safe because
+the load is an upsert.

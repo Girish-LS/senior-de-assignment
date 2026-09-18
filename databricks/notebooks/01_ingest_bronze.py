@@ -33,13 +33,13 @@
 dbutils.widgets.dropdown("mode", "incremental", ["incremental", "full"],
                          "Ingestion mode")
 dbutils.widgets.text("catalog", "workspace", "Unity Catalog catalog")
-dbutils.widgets.text("raw_schema", "raw", "Raw schema (must match the dbt source name)")
+dbutils.widgets.text("bronze_schema", "bronze", "Bronze schema (declared by the dbt source)")
 dbutils.widgets.text("secret_scope", "transactions-api", "Secret scope")
 dbutils.widgets.text("lookback_hours", "72", "Lookback window (hours)")
 
 MODE = dbutils.widgets.get("mode")
 CATALOG = dbutils.widgets.get("catalog")
-RAW_SCHEMA = dbutils.widgets.get("raw_schema")
+RAW_SCHEMA = dbutils.widgets.get("bronze_schema")
 SECRET_SCOPE = dbutils.widgets.get("secret_scope")
 LOOKBACK_HOURS = int(dbutils.widgets.get("lookback_hours"))
 
@@ -593,11 +593,11 @@ display(spark.sql(f"""
 # MAGIC cd dbt_project && dbt build --target databricks
 # MAGIC ```
 # MAGIC
-# MAGIC - **silver** `transactions_staging.stg_transactions` — resolves
+# MAGIC - **silver** `silver.stg_transactions` — resolves
 # MAGIC   duplicates, casts types. The single place where "what counts as a
 # MAGIC   usable transaction" is answered, so a second mart cannot answer it
 # MAGIC   differently.
-# MAGIC - **gold** `transactions_marts.daily_account_summary` — one row per
+# MAGIC - **gold** `gold.daily_account_summary` — one row per
 # MAGIC   account per UTC day, completed transactions only, with an enforced
 # MAGIC   model contract and 32 tests.
 

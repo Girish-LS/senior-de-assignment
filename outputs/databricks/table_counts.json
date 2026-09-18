@@ -1,0 +1,8 @@
+{
+  "bronze_rows": 349,
+  "flagged_duplicates": 5,
+  "quarantine_rows": 5,
+  "watermark": "2024-03-30T21:01:36Z",
+  "catalog": "workspace",
+  "bronze_schema": "bronze"
+}

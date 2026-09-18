@@ -5,92 +5,148 @@ serverless compute, so the compute sits next to the storage; dbt builds silver
 and gold on a SQL warehouse.
 
 ```
-REST API ──► 01_ingest_bronze  ──► raw.bronze_transactions      (Delta)
-             (notebook,             raw.quarantine_transactions
-              serverless)           raw.pipeline_watermark
-                                    raw.ingestion_run_metrics
+REST API ──► 01_ingest_bronze  ──► bronze.bronze_transactions   (Delta)
+             (notebook,             bronze.quarantine_transactions
+              serverless)           bronze.pipeline_watermark
+                                    bronze.ingestion_run_metrics
                      │
                      ▼
-             dbt ──► transactions_staging.stg_transactions   (silver)
-                 └─► transactions_marts.daily_account_summary (gold)
+             dbt ──► silver.stg_transactions                (silver)
+                 └─► gold.daily_account_summary             (gold)
 ```
 
-## Why the notebook imports the repository instead of standing alone
+## Where each layer lives
 
-`01_ingest_bronze` imports `validate_record`, `natural_key_hash`,
-`flag_duplicates`, `apply_lookback` and `max_valid_transaction_date` from
-`ingestion/`. It does not reimplement them.
+| Layer | Object | Contents |
+|---|---|---|
+| **Bronze** | `workspace.bronze.bronze_transactions` | 349 validated records, every field as the API sent it, duplicates flagged |
+| | `workspace.bronze.quarantine_transactions` | records that failed validation, with every reason |
+| | `workspace.bronze.pipeline_watermark` | high-water mark, from validated records only |
+| | `workspace.bronze.ingestion_run_metrics` | one row per run |
+| **Silver** | `workspace.silver.stg_transactions` | deduplicated and typed; the single definition of a usable transaction |
+| **Gold** | `workspace.gold.daily_account_summary` | one row per account per UTC day, enforced contract |
 
-That is deliberate and it is the same argument as having a single silver layer:
-a rule should be stated exactly once. Two copies of the validation logic would
-drift, and the day they drift is the day the local path and the Databricks path
-disagree about what a valid transaction is — with no test able to tell you
-which is right.
+### Getting the layer names to be the layer names took an override
 
-The cost is that the notebook needs the repository on the filesystem, which
-means a Git folder rather than a standalone upload. Worth it.
+dbt's default `generate_schema_name` *concatenates* the profile's target schema
+with a model's custom schema. A profile saying `schema: transactions` and a
+model saying `+schema: silver` produces `transactions_silver`, not `silver`.
+Sources are different again: dbt resolves a source's schema from the source
+*name* unless told otherwise.
 
----
+Left alone, that gave `raw` for bronze alongside `transactions_staging` and
+`transactions_marts` — two naming mechanisms in one warehouse, and a question
+a reviewer would be right to ask.
 
-## Setup
+Two changes fixed it. `dbt_project/macros/get_custom_schema.sql` overrides
+`generate_schema_name` to use the custom schema verbatim, and the source
+declares `schema: bronze` explicitly rather than inheriting from its name.
 
-### 1. Add the repository as a Git folder
+**The trade-off is worth stating.** dbt's default exists so two developers
+running the same project against one warehouse do not overwrite each other's
+tables. With this override they would. In a team that matters, and the fix is
+to branch on `target.name` — verbatim in production, prefixed with the
+developer's name otherwise. At one developer and one warehouse, having the
+layer names match the layers wins.
 
-In the workspace: **Workspace → Create → Git folder**, URL
-`https://github.com/Girish-LS/senior-de-assignment`, branch `main`.
+## Watermark and idempotency — the Task 3 evidence
 
-A private repository needs a GitHub token first: **Settings → Linked accounts
-→ Git provider**, with a personal access token carrying `repo` scope.
+The assessment weights incremental and idempotent design at 15% and asks
+specifically for "a second run where no duplicate rows are inserted". Here is
+what the committed evidence shows.
 
-The notebook walks up from its own path to find the `ingestion` package, so it
-works whether it sits in `databricks/notebooks/` or at the root.
+**Run 1, full load.** No date filter. 352 fetched, 349 valid into bronze, 3
+quarantined, 5 duplicates flagged. Watermark set to `2024-03-30T21:01:36Z`.
 
-### 2. Create the secret scope
+**Run 2, incremental.** Watermark minus a 72-hour lookback gives the filter
+`gte.2024-03-27T21:01:36Z`. 17 records re-read, all already present. **Bronze
+row count unchanged at 349. Watermark unchanged.**
 
-Credentials never live in the notebook. `dbutils.secrets.get` is the Databricks
-equivalent of the environment variables the local path uses, and its value is
-redacted from all notebook output.
+`outputs/databricks/idempotency_check.txt` records the row count either side of
+the rerun so the proof is a stated result rather than something to infer from
+two numbers in different parts of a transcript.
 
-Using the CLI:
+### The three decisions are one design
 
-```bash
-databricks secrets create-scope transactions-api
-databricks secrets put-secret transactions-api api-base-url
-databricks secrets put-secret transactions-api api-key
-databricks secrets put-secret transactions-api auth-token
+- **`gte`, not `gt`.** With `gt`, any record sharing the exact maximum
+  timestamp of the previous run is skipped permanently, and timestamp
+  collisions are common in transaction data.
+- **`gte` therefore re-reads the boundary**, which means the load *must* be an
+  upsert. On Delta that is `MERGE INTO` matching on `transaction_id`; Spark SQL
+  has no `INSERT ... ON CONFLICT`.
+- **The upsert makes the overlap free**, which is what permits the lookback
+  window at all. And the lookback is what bounds late-arrival loss.
+
+Explaining them as a set rather than three independent choices is the point:
+each one forces the next.
+
+### The watermark comes from validated records only
+
+This is the sharpest detail in the dataset. Two invalid records are dated April
+and November 2024, later than every valid record. A watermark taken over *raw*
+records lands on the November date; every subsequent run then asks the API for
+records newer than that, receives nothing, and exits successfully.
+
+No error, no alert, a green pipeline and no data — permanently. The watermark
+is therefore computed with `max_valid_transaction_date(valid)`, over the
+validated list, and `scripts/verify_submission.py` asserts the committed
+watermark falls in March precisely because a value in April or November would
+mean the trap had caught us.
+
+### Advanced only on success
+
+The watermark is written after every record has been persisted. Advancing it
+earlier — per page, say — means a mid-run failure moves the marker past records
+that were never processed, and they are lost on the next run.
+
+### A no-new-data run is a normal outcome, but must be distinguishable
+
+It completes successfully and is logged and counted. An unexpectedly long
+streak of zero-record runs is itself an alert condition, because a silently
+empty pipeline looks identical to a healthy one on any dashboard that tracks
+only failures.
+
+The loader goes further and **refuses to report success** when an incremental
+run fetches zero records inside a lookback window: the window always contains
+the record that set the watermark, so an empty result means the filter is
+malformed rather than that there is no new data. That guard exists because the
+bug happened — an earlier version double-applied the `gte.` prefix, producing
+`gte.gte.<timestamp>`, which matched nothing and reported success.
+
+## Committed evidence
+
+The repository is the only thing a reviewer sees, so the Databricks results are
+committed rather than described. `outputs/databricks/` holds:
+
+| File | What it shows |
+|---|---|
+| `run_transcript.txt` | Console output of the full run: ingestion, incremental rerun, dbt build |
+| `ingest_run1.json` | First run — `watermark_before` null, 352 fetched, 349 valid, 3 quarantined, 5 flagged |
+| `ingest_run2.json` | Second run — 17 re-read inside the lookback, watermark unchanged, zero new rows |
+| `dbt_build.txt` | `dbt build --target databricks` output, `PASS=34 WARN=0 ERROR=0` |
+| `bronze_sample.csv` | First 50 Delta bronze rows with ingestion metadata |
+| `quarantine_sample.csv` | Every quarantined record with every failure reason |
+| `duplicate_groups.csv` | The duplicate groups and which record survived |
+| `daily_account_summary.csv` | The gold mart, in full |
+| `watermark.csv` | Watermark state |
+| `run_metrics.csv` | One row per run |
+| `idempotency_check.txt` | Bronze row count either side of the rerun — the explicit Task 3 proof |
+| `table_counts.json` | Row counts and current watermark, as a single summary |
+
+Regenerate with:
+
+```powershell
+$env:DATABRICKS_HOST      = "dbc-xxxx.cloud.databricks.com"
+$env:DATABRICKS_HTTP_PATH = "/sql/1.0/warehouses/<id>"
+$env:DATABRICKS_TOKEN     = "dapi..."
+
+.\scripts\capture_databricks_run.ps1            # or -Rebuild -Redact
 ```
 
-`auth-token` is optional — the notebook falls back to `api-key`, since the
-brief states the bearer token may be the same value.
+`-Rebuild` prints the DROP SCHEMA statements to run first, so the transcript
+shows a build from an empty catalog. `-Redact` masks the workspace hostname.
 
-### 3. Run it
-
-Open `databricks/notebooks/01_ingest_bronze`, attach serverless compute, and
-run all. Widgets at the top control mode, catalog, schema, secret scope and
-lookback.
-
-First run: set **mode** to `full`. Expect 352 fetched, 349 valid, 3
-quarantined, 5 duplicates flagged, watermark `2024-03-30T21:01:36Z`.
-
-Second run: leave **mode** as `incremental`. Expect 17 fetched inside the
-72-hour lookback and **zero new bronze rows** — that is `MERGE INTO` proving
-idempotency.
-
-### 4. Build silver and gold
-
-```bash
-cd dbt_project
-dbt build --target databricks
-```
-
-`PASS=34 WARN=0 ERROR=0`. Two models, 32 data tests, an enforced model
-contract, one exposure.
-
-dbt reads the bronze tables directly because the notebook writes into the
-`raw` schema, which is the source name declared in
-`models/staging/schema.yml`. No intermediate step, no export, no manual upload.
-
----
+No credentials appear in any artefact: the token is never logged.
 
 ## Orchestration
 

@@ -25,14 +25,15 @@ What differs from the SQLite backend
     behaviour belongs to this warehouse rather than being carried over from
     the local run.
 
-Tables are created in the `raw` schema because that is the source name dbt
-declares in models/staging/schema.yml. Loading straight into the schema dbt
-expects removes the bridging views that a manual upload required.
+Tables are created in the `bronze` schema, which the dbt source declares
+explicitly. Bronze, silver and gold are the layer names the layers actually
+have - see dbt_project/macros/get_custom_schema.sql for why that needed an
+override.
 
 Credentials come from the environment, never from a file:
     DATABRICKS_HOST, DATABRICKS_HTTP_PATH, DATABRICKS_TOKEN
     DATABRICKS_CATALOG  (optional, default "workspace")
-    DATABRICKS_RAW_SCHEMA (optional, default "raw")
+    DATABRICKS_BRONZE_SCHEMA (optional, default "bronze")
 """
 
 from __future__ import annotations
@@ -207,7 +208,7 @@ def databricks_config() -> dict[str, str]:
         "http_path": os.environ.get("DATABRICKS_HTTP_PATH", "").strip(),
         "token": os.environ.get("DATABRICKS_TOKEN", "").strip(),
         "catalog": os.environ.get("DATABRICKS_CATALOG", "workspace").strip(),
-        "schema": os.environ.get("DATABRICKS_RAW_SCHEMA", "raw").strip(),
+        "schema": os.environ.get("DATABRICKS_BRONZE_SCHEMA", "bronze").strip(),
     }
     missing = [k for k in ("host", "http_path", "token") if not cfg[k]]
     if missing:

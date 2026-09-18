@@ -1,0 +1,134 @@
+﻿
+========================================================================
+DATABRICKS RUN TRANSCRIPT
+========================================================================
+Captured : 2026-09-18T09:45:38+05:30
+Python   : Python 3.12.3
+Catalog  : workspace
+
+Bronze, silver and gold are Delta tables in Unity Catalog.
+Ingestion writes bronze; dbt builds silver and gold.
+
+------------------------------------------------------------------------
+REBUILD: dropping every schema first
+------------------------------------------------------------------------
+Run these in the Databricks SQL editor before this script:
+  DROP SCHEMA IF EXISTS workspace.bronze CASCADE;
+  DROP SCHEMA IF EXISTS workspace.silver CASCADE;
+  DROP SCHEMA IF EXISTS workspace.gold CASCADE;
+
+Every object below is therefore created by code in this repository.
+
+------------------------------------------------------------------------
+STAGE 1  Task 1 - full ingestion, API to Delta bronze
+  python scripts/ingest_to_databricks.py --mode full
+------------------------------------------------------------------------
+2026-09-18T09:45:39Z INFO     run run-20260918T041539-7f3a72 targeting workspace.bronze
+2026-09-18T09:45:53Z INFO     mode=full: reading all records, no date filter
+2026-09-18T09:45:54Z INFO     fetched page offset=0 size=100 records=100
+2026-09-18T09:45:55Z INFO     fetched page offset=100 size=100 records=100
+2026-09-18T09:45:55Z INFO     fetched page offset=200 size=100 records=100
+2026-09-18T09:45:56Z INFO     fetched page offset=300 size=100 records=52
+2026-09-18T09:45:56Z INFO     fetched 352 records
+2026-09-18T09:45:56Z WARNING  duplicate group on natural key c53ae9832d41858db14290004be97bb8: ['TXN-0319', 'TXN-0349'] (surviving: TXN-0319)
+2026-09-18T09:45:56Z WARNING  duplicate group on natural key 03c934c0a20d4876e48bdddd0c9b14fb: ['TXN-0178', 'TXN-0350'] (surviving: TXN-0178)
+2026-09-18T09:45:56Z WARNING  duplicate group on natural key 6cdde137bf990a9d47815791224fa4c2: ['TXN-0079', 'TXN-0352'] (surviving: TXN-0079)
+2026-09-18T09:45:56Z WARNING  duplicate group on natural key 77f20fb8e0616dd4e2bda148bdd08527: ['TXN-0194', 'TXN-0348'] (surviving: TXN-0194)
+2026-09-18T09:45:56Z WARNING  duplicate group on natural key e69e23a2bad5971f1060095522bf6858: ['TXN-0180', 'TXN-0351'] (surviving: TXN-0180)
+2026-09-18T09:46:16Z INFO     run run-20260918T041539-7f3a72 succeeded: {"run_id": "run-20260918T041539-7f3a72", "target": "workspace.bronze", "mode": "full", "watermark_before": null, "effective_filter_from": null, "watermark_after": "2024-03-30T21:01:36Z", "duration_seconds": 35.562, "http_requests": 4, "http_retries": 0, "fetched": 352, "valid": 349, "quarantined": 3, "duplicate": 5}
+{
+  "run_id": "run-20260918T041539-7f3a72",
+  "target": "workspace.bronze",
+  "mode": "full",
+  "watermark_before": null,
+  "effective_filter_from": null,
+  "watermark_after": "2024-03-30T21:01:36Z",
+  "duration_seconds": 35.562,
+  "http_requests": 4,
+  "http_retries": 0,
+  "fetched": 352,
+  "valid": 349,
+  "quarantined": 3,
+  "duplicate": 5
+}
+
+bronze_transactions now holds 349 rows
+Next:  cd dbt_project && dbt build --target databricks
+
+------------------------------------------------------------------------
+STAGE 2  Task 3 - incremental run, watermark plus lookback
+  python scripts/ingest_to_databricks.py
+------------------------------------------------------------------------
+bronze rows BEFORE rerun: 349
+
+2026-09-18T09:46:25Z INFO     run run-20260918T041625-745cf8 targeting workspace.bronze
+2026-09-18T09:46:32Z INFO     mode=incremental: watermark=2024-03-30T21:01:36Z lookback=72h filter=gte.2024-03-27T21:01:36Z
+2026-09-18T09:46:33Z INFO     fetched page offset=0 size=100 records=17
+2026-09-18T09:46:33Z INFO     fetched 17 records
+2026-09-18T09:46:49Z INFO     run run-20260918T041625-745cf8 succeeded: {"run_id": "run-20260918T041625-745cf8", "target": "workspace.bronze", "mode": "incremental", "watermark_before": "2024-03-30T21:01:36Z", "effective_filter_from": "2024-03-27T21:01:36Z", "watermark_after": "2024-03-30T21:01:36Z", "duration_seconds": 23.016, "http_requests": 1, "http_retries": 0, "fetched": 17, "valid": 15, "quarantined": 2, "duplicate": 0}
+{
+  "run_id": "run-20260918T041625-745cf8",
+  "target": "workspace.bronze",
+  "mode": "incremental",
+  "watermark_before": "2024-03-30T21:01:36Z",
+  "effective_filter_from": "2024-03-27T21:01:36Z",
+  "watermark_after": "2024-03-30T21:01:36Z",
+  "duration_seconds": 23.016,
+  "http_requests": 1,
+  "http_retries": 0,
+  "fetched": 17,
+  "valid": 15,
+  "quarantined": 2,
+  "duplicate": 0
+}
+
+bronze_transactions now holds 349 rows
+Next:  cd dbt_project && dbt build --target databricks
+
+bronze rows AFTER rerun : 349
+IDEMPOTENT: the rerun re-read records inside the lookback window and inserted zero new rows.
+
+------------------------------------------------------------------------
+STAGE 3  Task 2 - dbt builds silver and gold on Databricks
+  dbt build --target databricks
+------------------------------------------------------------------------
+04:17:02  Running with dbt=1.12.3
+04:17:04  Registered adapter: databricks=1.12.5
+04:17:05  Found 2 models, 32 data tests, 2 sources, 1 exposure, 776 macros
+04:17:18  3 of 35 START test source_accepted_values_raw_bronze_transactions_status__completed__pending__failed__reversed  [RUN]
+04:17:23  3 of 35 PASS source_accepted_values_raw_bronze_transactions_status__completed__pending__failed__reversed  [PASS in 4.94s]
+04:17:23  6 of 35 START test source_not_null_raw_quarantine_transactions_error_count ..... [RUN]
+04:17:23  7 of 35 START test source_not_null_raw_quarantine_transactions_error_reason .... [RUN]
+04:17:26  6 of 35 PASS source_not_null_raw_quarantine_transactions_error_count ........... [PASS in 3.66s]
+04:17:27  7 of 35 PASS source_not_null_raw_quarantine_transactions_error_reason .......... [PASS in 4.32s]
+04:17:30  9 of 35 OK created sql view model silver.stg_transactions ...................... [OK in 2.90s]
+04:17:38  [WARNING]: order_by_clause is not supported for listagg on Spark/Databricks
+04:17:48  17 of 35 OK created sql incremental model gold.daily_account_summary ........... [OK in 10.61s]
+04:18:07  Completed successfully
+04:18:07  Done. PASS=34 WARN=0 ERROR=0 SKIP=0 NO-OP=1 REUSED=0 TOTAL=35
+
+------------------------------------------------------------------------
+STAGE 4  sample the Delta tables
+------------------------------------------------------------------------
+Sampling Delta tables:
+  bronze_sample.csv                         50 rows (first 50)
+  quarantine_sample.csv                      5 rows 
+  duplicate_groups.csv                       5 rows 
+  watermark.csv                              1 rows 
+  run_metrics.csv                            2 rows 
+  daily_account_summary.csv                238 rows 
+
+{
+  "bronze_rows": 349,
+  "flagged_duplicates": 5,
+  "quarantine_rows": 5,
+  "watermark": "2024-03-30T21:01:36Z",
+  "catalog": "workspace",
+  "bronze_schema": "bronze"
+}
+
+Written to C:\Electroflux\senior-de-assignment\outputs\databricks
+
+========================================================================
+RUN COMPLETE
+========================================================================
