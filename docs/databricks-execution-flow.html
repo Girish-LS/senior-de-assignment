@@ -185,9 +185,9 @@
       </div>
     </div>
     <div class="fact-grid">
-      <div class="fact"><b>Bronze</b>Raw STRING-preserving Delta layer plus quarantine, watermark, and metrics.</div>
-      <div class="fact"><b>Silver</b><code>stg_transactions</code> deduplicates survivors and casts types once.</div>
-      <div class="fact"><b>Gold</b><code>daily_account_summary</code> incrementally recomputes account/day aggregates.</div>
+      <div class="fact"><b>Bronze</b><div>Raw STRING-preserving Delta layer plus quarantine, watermark, and metrics.</div></div>
+      <div class="fact"><b>Silver</b><div><code>stg_transactions</code> deduplicates survivors and casts types once.</div></div>
+      <div class="fact"><b>Gold</b><div><code>daily_account_summary</code> incrementally recomputes account/day aggregates.</div></div>
     </div>
   </div>
 
@@ -389,7 +389,7 @@ where is_duplicate = 0</code></pre>
   <pre><code>cd dbt_project
 dbt deps
 dbt build --target databricks</code></pre>
-  <p>Committed output in <code>outputs/databricks/dbt_build.txt</code> shows <b>2 models</b>, <b>32 data tests</b>, <b>1 exposure</b>, and final status <b>PASS=34 WARN=0 ERROR=0</b>.</p>
+  <p>Committed output in <code>outputs/databricks/dbt_build.txt</code> shows <b>2 models</b> and <b>32 data tests</b>, with <b>1 exposure</b> declared in project metadata. The final execution status is <b>PASS=34 WARN=0 ERROR=0</b>, which counts the executed models and tests rather than the exposure declaration.</p>
 
   <h2>6. Orchestration job definition and task dependencies</h2>
   <p class="small">See <code>databricks/jobs/transactions_pipeline_job.json</code> for the documented job-definition values. The diagram below highlights the two-task dependency chain only.</p>
@@ -424,7 +424,7 @@ dbt build --target databricks</code></pre>
       </tbody>
     </table>
   </div>
-  <p>The same JSON also documents a daily <code>06:00 UTC</code> schedule, <code>max_concurrent_runs = 1</code>, failure email notifications, and a run-duration health rule that triggers when runtime exceeds <code>1800</code> seconds.</p>
+  <p>The referenced JSON is intended to document settings such as a daily <code>06:00 UTC</code> schedule, <code>max_concurrent_runs = 1</code>, failure email notifications, and a run-duration health rule that triggers when runtime exceeds <code>1800</code> seconds.</p>
 
   <div class="section-break"></div>
   <h2>7. Portability findings from the DuckDB-first dbt path to Databricks</h2>
