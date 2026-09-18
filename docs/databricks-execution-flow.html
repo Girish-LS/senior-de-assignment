@@ -322,7 +322,7 @@ python scripts/ingest_to_databricks.py            # incremental</code></pre>
     <p><b>Why compute the watermark from valid records only?</b> This dataset contains invalid records dated <code>2024-04-15</code> and <code>2024-11-31</code>, later than every valid record. A raw-record watermark would jump to November and silently stop future ingestion.</p>
   </div>
   <div class="decision warn">
-    <p><b>Zero-record guard.</b> Repository source files <code>databricks/notebooks/01_ingest_bronze.py</code> and <code>scripts/ingest_to_databricks.py</code> both raise instead of reporting success when an incremental Databricks run with a lookback window fetches zero rows, because that window should still contain the watermark-setting record. The guard exists specifically to catch malformed filters such as historical <code>gte.gte.&lt;timestamp&gt;</code>.</p>
+    <p><b>Zero-record guard.</b> The current checked-in Databricks entrypoints — <code>databricks/notebooks/01_ingest_bronze.py</code> and <code>scripts/ingest_to_databricks.py</code> — each include a guard that raises instead of reporting success when an incremental run with a lookback window fetches zero rows, because that window should still contain the watermark-setting record. The code comments tie this to the historical malformed-filter case <code>gte.gte.&lt;timestamp&gt;</code>.</p>
   </div>
 
   <h3>Validation and quarantine</h3>
@@ -371,12 +371,12 @@ where is_duplicate = 0</code></pre>
     </div>
     <div class="panel">
       <h3>Gold: <code>daily_account_summary</code></h3>
+      <p class="small">As currently defined in <code>dbt_project/models/marts/daily_account_summary.sql</code> and <code>dbt_project/models/marts/schema.yml</code>:</p>
       <ul>
-        <li>Materialized as <b>incremental</b> with <code>delete+insert</code>.</li>
-        <li>Unique key: <code>[account_id, transaction_date]</code>.</li>
-        <li>Includes only <code>status = 'completed'</code> transactions.</li>
-        <li>Recomputes affected days using a lookback that matches ingestion.</li>
-        <li>Contract is enforced in <code>schema.yml</code>.</li>
+        <li><code>materialized='incremental'</code>, <code>unique_key=['account_id', 'transaction_date']</code>, <code>incremental_strategy='delete+insert'</code>, and <code>on_schema_change='fail'</code>.</li>
+        <li>Includes only rows where <code>status = 'completed'</code>.</li>
+        <li>Incremental predicate recomputes days where <code>transaction_day &gt;= max(transaction_date) - interval '{{ var(\"summary_lookback_days\") }} days'</code>.</li>
+        <li>The model contract is enforced in <code>dbt_project/models/marts/schema.yml</code>.</li>
       </ul>
       <pre><code>{{ config(
     materialized='incremental',
@@ -392,6 +392,7 @@ dbt build --target databricks</code></pre>
   <p>Committed output in <code>outputs/databricks/dbt_build.txt</code> shows <b>2 models</b>, <b>32 data tests</b>, <b>1 exposure</b>, and final status <b>PASS=34 WARN=0 ERROR=0</b>.</p>
 
   <h2>6. Orchestration job definition and task dependencies</h2>
+  <p class="small">Diagram values below are taken from the current checked-in job definition: <code>databricks/jobs/transactions_pipeline_job.json</code>.</p>
   <div class="diagram no-break">
     <svg viewBox="0 0 900 220" width="100%" xmlns="http://www.w3.org/2000/svg">
       <defs>
