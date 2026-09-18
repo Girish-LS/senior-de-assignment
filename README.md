@@ -300,48 +300,79 @@ records, and a semicolon inside a SQL comment broke statement splitting.
 
 ```
 senior-de-assignment/
-├── README.md
-├── Makefile
-├── assignment.env.example        # template; real file is gitignored
-├── contracts/
-│   └── daily_account_summary.yml # owner, SLA, semantics, change policy
-├── dags/
-│   └── transactions_pipeline.py  # illustrative Airflow DAG
-├── data/
-│   └── transactions.csv          # offline fixture (same shape, different rows)
+├── README.md                     # this file; covers the §7 checklist
+├── Makefile                      # named shortcuts for every command
+├── requirements.txt              # dbt only; the pipeline needs nothing
+├── pyproject.toml                # metadata, pytest and ruff config
+├── assignment.env.example        # credential template; real file gitignored
+├── .gitignore                    # written before git init
+├── .gitattributes                # LF for .sh, CRLF for .ps1
+│
+├── ingestion/                    # the pipeline (standard library only)
+│   ├── ingest_transactions.py    # TASK 1  entry point: full load
+│   ├── incremental_ingest.py     # TASK 3  entry point: watermark run
+│   ├── run_transform.py          # TASK 2  entry point: build the mart
+│   ├── export_outputs.py         #         entry point: review artefacts
+│   ├── api_client.py             # pagination, retry, 206 handling
+│   ├── config.py                 # env-sourced settings, fail fast
+│   ├── models.py                 # validation rules, every error per record
+│   ├── iso_country_codes.py      # the 249 assigned ISO codes
+│   ├── dedupe.py                 # natural key, deterministic survivorship
+│   ├── storage.py                # bronze, quarantine, watermark, metrics
+│   └── transform.py              # summary build and 11 assertions
+│
 ├── databricks/                   # the Databricks path
-│   ├── README.md                 # Git folder + secret scope setup
+│   ├── README.md                 # layer layout, Git folder, secret scope
 │   ├── notebooks/
 │   │   └── 01_ingest_bronze.py   # API -> Delta bronze on serverless
 │   └── jobs/
-│       └── transactions_pipeline_job.json  # two-task Job (not deployed)
-├── dbt_project/                  # dbt build: PASS=34, 0 errors
-│   ├── models/staging/           # stg_transactions + schema.yml
-│   └── models/marts/             # daily_account_summary + schema.yml
-├── docs/
-│   ├── product_platform_note.md  # Task 4
-│   └── transactions_schema.json
-├── ingestion/
-│   ├── api_client.py             # pagination, retry, 206 handling
-│   ├── config.py                 # env-sourced settings, fail fast
-│   ├── dedupe.py                 # natural key, deterministic survivorship
-│   ├── iso_country_codes.py      # the 249 assigned codes
-│   ├── models.py                 # validation rules
-│   ├── pipeline.py               # orchestration and watermark logic
-│   ├── storage.py                # bronze, quarantine, watermark, metrics
-│   └── transform.py              # summary build and assertions
-├── outputs/                      # samples, run transcript, dbt build result
-│   └── databricks/               # evidence the Databricks path ran
-├── scripts/
-│   ├── probe_api.py              # endpoint characterisation, run first
-│   ├── ingest_to_databricks.py   # API -> Delta bronze, as an external process
-│   ├── export_for_dbt.py         # SQLite tables -> CSV for dbt
-│   ├── capture_run.ps1 / .sh     # reproducible run transcript
-│   └── verify_submission.py      # audits this repo against the brief
+│       └── transactions_pipeline_job.json   # two-task Job (not deployed)
+│
+├── dbt_project/                  # silver and gold; PASS=34 on both targets
+│   ├── dbt_project.yml           # +schema: silver / gold
+│   ├── profiles.yml.example      # duckdb and databricks targets
+│   ├── packages.yml              # empty, with the reason documented
+│   ├── macros/
+│   │   ├── generic_tests.sql     # two dbt_utils tests, reimplemented
+│   │   └── get_custom_schema.sql # medallion schema names, not concatenated
+│   └── models/
+│       ├── staging/              # stg_transactions (silver) + schema.yml
+│       └── marts/                # daily_account_summary (gold) + schema.yml
+│
 ├── sql/
-│   └── daily_account_summary.sql
-└── tests/                        # 65 tests
+│   └── daily_account_summary.sql # the same mart in plain SQL, via sqlite3
+│
+├── tests/                        # 65 tests, unittest, no install needed
+│   ├── test_validation.py        # every rule, each planted defect by name
+│   └── test_pipeline.py          # pagination, retry, dedupe, idempotency
+│
+├── scripts/
+│   ├── probe_api.py              # endpoint characterisation, run FIRST
+│   ├── ingest_to_databricks.py   # API -> Delta bronze, external process
+│   ├── export_databricks_samples.py  # Delta tables -> committed evidence
+│   ├── count_bronze.py           # row count, for the idempotency assertion
+│   ├── export_for_dbt.py         # SQLite tables -> CSV for the dbt DuckDB path
+│   ├── capture_databricks_run.ps1    # runs and captures the Databricks path
+│   ├── capture_run.ps1 / .sh     # runs and captures the local path
+│   └── verify_submission.py      # audits this repo against the brief
+│
+├── contracts/
+│   └── daily_account_summary.yml # owner, SLA, semantics, change policy
+├── dags/
+│   └── transactions_pipeline.py  # illustrative Airflow DAG (not deployed)
+├── data/
+│   └── transactions.csv          # offline fixture (same shape, different rows)
+├── docs/
+│   ├── product_platform_note.md  # TASK 4  the design note
+│   ├── transactions_schema.json  # the published schema, for reference
+│   └── dbt/index.html            # generated lineage browser
+├── outputs/                      # committed evidence, local path
+│   └── databricks/               # committed evidence, Databricks path
+└── .github/workflows/ci.yml      # installs nothing; proves the claim
 ```
+
+Task entry points are marked. Everything in `outputs/` is committed so results
+can be read without running anything.
 
 ---
 

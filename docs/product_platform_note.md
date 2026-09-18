@@ -113,6 +113,12 @@ on every dbt model, a dbt exposure representing the downstream dashboard so
 lineage runs from source through to consumption, and `dbt docs` output giving
 a column-level lineage graph.
 
+The layers are named for what they are — `bronze`, `silver`, `gold` in Unity
+Catalog — which required overriding dbt's default `generate_schema_name`,
+because it concatenates the target schema with a model's custom schema rather
+than replacing it. A small thing, but a consumer reading a schema name should
+learn the layer from it rather than have to ask.
+
 In production on Databricks, Unity Catalog becomes the system of record —
 automatic column-level lineage, centralised access control, tagging and audit
 — and the contract file remains as the versioned, reviewable statement of what
@@ -125,30 +131,58 @@ minimum.
 
 ## Trade-offs made because of the time limit and the environment
 
-**SQLite rather than DuckDB for the pipeline.** The machine available blocks
-the public package index, so neither `duckdb` nor `dbt-core` could initially be
-installed. Rather than ship something unrunnable, the pipeline uses only
-Python's standard library and executes the transformation through `sqlite3`.
+**Two execution paths rather than one.** The primary path is Databricks:
+ingestion writes bronze, quarantine, the watermark and run metrics as Delta
+tables in Unity Catalog (`workspace.bronze`), and dbt builds silver
+(`workspace.silver.stg_transactions`) and gold
+(`workspace.gold.daily_account_summary`) on a SQL warehouse. Verified from an
+empty catalog: 352 fetched, 349 valid, 3 quarantined, 5 flagged, then a rerun
+that re-read 17 records inside the lookback and inserted none.
 
-The internal artifact repository was configured later and dbt did install, so
-the dbt project was run: `PASS=34 WARN=0 ERROR=0`. The two implementations were
-then compared row by row — 257 rows each, identical grain, zero value
-mismatches — which turned an environment constraint into the strongest
-correctness evidence in the submission. Two implementations agreeing do not
-share a bug.
+There is also a local path using SQLite and DuckDB that runs with no account,
+no credentials and no install step, because `sqlite3` ships with Python. I kept
+it deliberately. Reproducibility is a graded criterion and a reviewer being
+able to clone the repository and see results without provisioning anything is
+worth more than a single canonical path.
 
-What remains a genuine compromise is the seam: dbt reads CSV exports of the
-SQLite tables rather than the database itself, because DuckDB can only attach
-SQLite via an extension whose download the proxy blocks. Two stores and an
-export step is less elegant than one engine, and CSV loses type information on
-the way across — mitigated by reading with `all_varchar=true` so casting stays
-explicit in staging, and Parquet would be the production choice.
+**How that came about is worth being honest about.** The machine available
+blocks the public package index, so neither `duckdb` nor `dbt-core` could
+initially be installed and the pipeline was written against the standard
+library alone. The internal artifact repository was configured later. By then
+the mart existed twice — hand-written SQL through `sqlite3`, and a dbt model —
+and comparing them row by row gave 257 rows each, identical grain, zero value
+mismatches. An environment constraint produced the strongest correctness
+evidence in the submission, because two independent implementations agreeing do
+not share a bug.
+
+**The genuine compromise is that ingestion runs outside Databricks.** The
+notebook in `databricks/notebooks/` runs on serverless compute, and I verified
+serverless can reach the API — but the path I executed most is an external
+Python process writing over the SQL connector, because it runs from the
+repository with three environment variables and nothing else. In production
+this would be a Databricks Job or Azure Data Factory, so the compute sits
+beside the storage. The shape is identical; only the host differs.
+
+**What running on two engines cost, and bought.** It surfaced three
+portability defects invisible on either engine alone: a contract declaring
+`timestamp with time zone`, which does not exist in Spark SQL; a
+`cast(null as varchar)`, which Spark rejects without a length; and `listagg`
+ignoring `order_by` on Spark, so `currencies` is sorted on DuckDB and unsorted
+on Databricks. The first two are fixed; the third is documented rather than
+papered over. The lesson: **a dbt model contract is declared in the
+warehouse's own type system, so portable SQL is not portable until it has run
+on the second warehouse.**
 
 **Hand-written validation rather than Pydantic.** Same cause. The rules are
 identical. The cost is more code; the benefit is that every rule is legible
 without knowing a library's coercion semantics.
 
-**Airflow DAG illustrative, not deployed.** There is no target environment.
+**Orchestration defined, not deployed.** Two definitions are committed: an
+Airflow DAG in `dags/`, because Airflow is the named tool, and a two-task
+Databricks Job in `databricks/jobs/`, because on this platform Workflows would
+arguably be the better choice for a single pipeline — no separate
+infrastructure to run. Airflow earns its overhead when there are cross-system
+dependencies. Neither is deployed, and I would not claim otherwise.
 The DAG shows the intended task decomposition, retry boundaries and alerting,
 which is the part worth reviewing.
 
