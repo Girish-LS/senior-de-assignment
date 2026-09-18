@@ -177,7 +177,7 @@
       <div class="panel">
         <p><b>Verified repository evidence</b></p>
         <ul>
-          <li>First bronze run: <b>352 fetched</b>, <b>349 valid</b>, <b>3 quarantined</b>, <b>5 duplicates flagged</b></li>
+          <li>First bronze run: <b>352 fetched</b>, <b>349 valid</b>, <b>3 quarantined</b>, <b>5 duplicate rows flagged across 5 duplicate groups</b></li>
           <li>Incremental rerun: <b>17 re-read</b>, bronze row count stays <b>349</b></li>
           <li>dbt on Databricks: <b>PASS=34 WARN=0 ERROR=0</b></li>
           <li>Output artefacts committed under <code>outputs/databricks/</code></li>
@@ -322,7 +322,7 @@ python scripts/ingest_to_databricks.py            # incremental</code></pre>
     <p><b>Why compute the watermark from valid records only?</b> This dataset contains invalid records dated <code>2024-04-15</code> and <code>2024-11-31</code>, later than every valid record. A raw-record watermark would jump to November and silently stop future ingestion.</p>
   </div>
   <div class="decision warn">
-    <p><b>Zero-record guard.</b> The Databricks ingestion refuses to report success when an incremental run with a lookback window fetches zero rows, because the window should at least contain the watermark-setting record. This specifically protects against malformed filters such as historical <code>gte.gte.&lt;timestamp&gt;</code>.</p>
+    <p><b>Zero-record guard.</b> Repository source files <code>databricks/notebooks/01_ingest_bronze.py</code> and <code>scripts/ingest_to_databricks.py</code> both raise instead of reporting success when an incremental Databricks run with a lookback window fetches zero rows, because that window should still contain the watermark-setting record. The guard exists specifically to catch malformed filters such as historical <code>gte.gte.&lt;timestamp&gt;</code>.</p>
   </div>
 
   <h3>Validation and quarantine</h3>
@@ -416,7 +416,7 @@ dbt build --target databricks</code></pre>
       <text x="805" y="116" text-anchor="middle" font-size="12" font-family="Arial" fill="#b42318">max_concurrent_runs = 1</text>
 
       <rect x="740" y="146" width="130" height="46" rx="12" fill="#eafaf1" stroke="#067647" stroke-width="2"/>
-      <text x="805" y="174" text-anchor="middle" font-size="12" font-family="Arial" fill="#067647">health rule: &gt; 30 min</text>
+      <text x="805" y="174" text-anchor="middle" font-size="12" font-family="Arial" fill="#067647">alert if run &gt; 30 min</text>
 
       <line x1="295" y1="125" x2="430" y2="125" stroke="#1f6feb" stroke-width="3" marker-end="url(#arrow2)"/>
     </svg>
@@ -466,7 +466,7 @@ dbt build --target databricks</code></pre>
       </thead>
       <tbody>
         <tr><td><code>run_transcript.txt</code></td><td>Full end-to-end execution transcript for full ingestion, incremental rerun, and dbt build.</td></tr>
-        <tr><td><code>ingest_run1.json</code></td><td>Initial full run: watermark was null, 352 fetched, 349 valid, 3 quarantined, 5 duplicates flagged.</td></tr>
+        <tr><td><code>ingest_run1.json</code></td><td>Initial full run: watermark was null, 352 fetched, 349 valid, 3 quarantined, and 5 duplicate rows flagged across 5 duplicate groups.</td></tr>
         <tr><td><code>ingest_run2.json</code></td><td>Incremental rerun: watermark before and after both <code>2024-03-30T21:01:36Z</code>, 17 rows re-read from the lookback window.</td></tr>
         <tr><td><code>bronze_sample.csv</code></td><td>Sample raw-plus-metadata bronze rows written to Delta.</td></tr>
         <tr><td><code>quarantine_sample.csv</code></td><td>Invalid records with all reasons preserved.</td></tr>
