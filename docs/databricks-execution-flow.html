@@ -419,8 +419,8 @@ dbt build --target databricks</code></pre>
         <tr><th style="width:20%">Task</th><th style="width:18%">Type</th><th style="width:15%">Retries</th><th style="width:20%">Depends on</th><th>Reasoning</th></tr>
       </thead>
       <tbody>
-        <tr><td><code>ingest_bronze</code></td><td>Notebook task</td><td>Documented in JSON: 3, 60s interval</td><td>—</td><td>API/network failures are often transient and should not force a full pipeline rerun.</td></tr>
-        <tr><td><code>dbt_silver_gold</code></td><td>dbt task</td><td>Documented in JSON: 1</td><td><code>ingest_bronze</code></td><td>Failing data tests are usually not transient; retrying fetch plus transformation together would be wasteful and misleading.</td></tr>
+        <tr><td><code>ingest_bronze</code></td><td>Notebook task</td><td><code>databricks/jobs/transactions_pipeline_job.json</code>: <code>tasks[0].max_retries=3</code>, <code>tasks[0].min_retry_interval_millis=60000</code></td><td>—</td><td>API/network failures are often transient and should not force a full pipeline rerun.</td></tr>
+        <tr><td><code>dbt_silver_gold</code></td><td>dbt task</td><td><code>databricks/jobs/transactions_pipeline_job.json</code>: <code>tasks[1].max_retries=1</code></td><td><code>tasks[1].depends_on[0].task_key = 'ingest_bronze'</code></td><td>Failing data tests are usually not transient; retrying fetch plus transformation together would be wasteful and misleading.</td></tr>
       </tbody>
     </table>
   </div>
@@ -434,10 +434,10 @@ dbt build --target databricks</code></pre>
         <tr><th style="width:25%">Finding</th><th style="width:25%">What worked locally</th><th>Databricks outcome / resolution</th></tr>
       </thead>
       <tbody>
-        <tr><td><code>timestamp with time zone</code></td><td>DuckDB contract accepted a timezone-aware timestamp type.</td><td>Spark SQL does not expose that type in the same way. Resolved by normalizing the model output to plain <code>timestamp</code>.</td></tr>
-        <tr><td><code>VARCHAR</code> in the dbt contract/cast path</td><td>DuckDB accepted the generated <code>cast(null as varchar)</code> shape used by the model contract.</td><td>That specific Databricks/Spark path raised <code>DATATYPE_MISSING_SIZE</code>; the repo resolved it by switching the checked-in model/contract typing to <code>string</code> for the Databricks-compatible path.</td></tr>
-        <tr><td><code>listagg order_by</code></td><td>DuckDB honors ordering for the <code>currencies</code> list.</td><td>Spark/Databricks ignores <code>order_by_clause</code> in dbt's <code>listagg</code>. This remains documented rather than hidden.</td></tr>
-        <tr><td>UTF-8 BOM</td><td>DuckDB tolerated files that started with a BOM.</td><td>Spark SQL parsing failed; the repo explicitly documents the issue and already handles BOMs in config file reading.</td></tr>
+        <tr><td><code>timestamp with time zone</code></td><td>DuckDB contract accepted a timezone-aware timestamp type.</td><td>Spark SQL does not expose that type in the same way. The checked-in resolution is visible in <code>dbt_project/models/marts/daily_account_summary.sql</code> and <code>dbt_project/models/marts/schema.yml</code>, which normalize the output to plain <code>timestamp</code>.</td></tr>
+        <tr><td><code>VARCHAR</code> in the dbt contract/cast path</td><td>DuckDB accepted the generated <code>cast(null as varchar)</code> shape used by the model contract.</td><td>That specific Databricks/Spark path raised <code>DATATYPE_MISSING_SIZE</code>; the checked-in type change is reflected in <code>dbt_project/models/marts/daily_account_summary.sql</code> and <code>dbt_project/models/marts/schema.yml</code>, which now use <code>string</code>-compatible typing for this path.</td></tr>
+        <tr><td><code>listagg order_by</code></td><td>DuckDB honors ordering for the <code>currencies</code> list.</td><td>The ongoing limitation is visible in <code>dbt_project/models/marts/daily_account_summary.sql</code>, and the Databricks warning is captured in <code>outputs/databricks/dbt_build.txt</code>: Spark/Databricks ignores <code>order_by_clause</code> in dbt's <code>listagg</code>.</td></tr>
+        <tr><td>UTF-8 BOM</td><td>DuckDB tolerated files that started with a BOM.</td><td>The issue is documented in <code>README.md</code>, and related BOM handling is visible in <code>ingestion/config.py</code>, which reads env files as <code>utf-8-sig</code>.</td></tr>
       </tbody>
     </table>
   </div>
