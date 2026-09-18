@@ -391,7 +391,7 @@ where is_duplicate = 0</code></pre>
   <pre><code>cd dbt_project
 dbt deps
 dbt build --target databricks</code></pre>
-  <p>Committed output in <code>outputs/databricks/dbt_build.txt</code> shows <b>2 models</b> and <b>32 data tests</b>, with <b>1 exposure</b> declared in project metadata. The final execution status is <b>PASS=34 WARN=0 ERROR=0</b>, which counts the executed models and tests rather than the exposure declaration.</p>
+  <p><code>outputs/databricks/dbt_build.txt</code> captures a successful sample Databricks dbt build for this repository, including the run's project inventory and final execution status.</p>
 
   <h2>6. Orchestration job definition and task dependencies</h2>
   <p class="small">See <code>databricks/jobs/transactions_pipeline_job.json</code> for the documented job-definition values. That existing repository file is referenced here but is not changed in this PR, so the concrete values below should be treated as point-in-time documentation and verified against the JSON if it changes. The diagram below highlights the two-task dependency chain only.</p>
@@ -423,8 +423,8 @@ dbt build --target databricks</code></pre>
         <tr><th style="width:20%">Task</th><th style="width:18%">Type</th><th style="width:15%">Retries</th><th style="width:20%">Depends on</th><th>Reasoning</th></tr>
       </thead>
       <tbody>
-        <tr><td><code>ingest_bronze</code></td><td>Notebook task</td><td><code>databricks/jobs/transactions_pipeline_job.json</code>: <code>tasks[0].max_retries=3</code>, <code>tasks[0].min_retry_interval_millis=60000</code></td><td>—</td><td>API/network failures are often transient and should not force a full pipeline rerun.</td></tr>
-        <tr><td><code>dbt_silver_gold</code></td><td>dbt task</td><td><code>databricks/jobs/transactions_pipeline_job.json</code>: <code>tasks[1].max_retries=1</code></td><td><code>tasks[1].depends_on[0].task_key = 'ingest_bronze'</code></td><td>Failing data tests are usually not transient; retrying fetch plus transformation together would be wasteful and misleading.</td></tr>
+        <tr><td><code>ingest_bronze</code></td><td>Notebook task</td><td><code>databricks/jobs/transactions_pipeline_job.json</code>: task key <code>ingest_bronze</code> has <code>max_retries=3</code> and <code>min_retry_interval_millis=60000</code></td><td>—</td><td>API/network failures are often transient and should not force a full pipeline rerun.</td></tr>
+        <tr><td><code>dbt_silver_gold</code></td><td>dbt task</td><td><code>databricks/jobs/transactions_pipeline_job.json</code>: task key <code>dbt_silver_gold</code> has <code>max_retries=1</code></td><td><code>depends_on: ingest_bronze</code></td><td>Failing data tests are usually not transient; retrying fetch plus transformation together would be wasteful and misleading.</td></tr>
       </tbody>
     </table>
   </div>
