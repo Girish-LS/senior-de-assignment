@@ -193,7 +193,9 @@
 
   <h2>1. High-level architecture</h2>
   <div class="diagram no-break">
-    <svg viewBox="0 0 980 260" width="100%" xmlns="http://www.w3.org/2000/svg">
+    <svg viewBox="0 0 980 260" width="100%" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="arch-title arch-desc">
+      <title id="arch-title">Databricks high-level architecture</title>
+      <desc id="arch-desc">The REST API feeds two interchangeable ingestion paths, which write bronze Delta tables, quarantine records, and control tables before dbt builds silver and gold models.</desc>
       <defs>
         <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="strokeWidth">
           <path d="M0,0 L10,5 L0,10 z" fill="#1f6feb"/>
@@ -392,9 +394,11 @@ dbt build --target databricks</code></pre>
   <p>Committed output in <code>outputs/databricks/dbt_build.txt</code> shows <b>2 models</b> and <b>32 data tests</b>, with <b>1 exposure</b> declared in project metadata. The final execution status is <b>PASS=34 WARN=0 ERROR=0</b>, which counts the executed models and tests rather than the exposure declaration.</p>
 
   <h2>6. Orchestration job definition and task dependencies</h2>
-  <p class="small">See <code>databricks/jobs/transactions_pipeline_job.json</code> for the documented job-definition values. That existing repository file is referenced here but is not changed in this PR. The diagram below highlights the two-task dependency chain only.</p>
+  <p class="small">See <code>databricks/jobs/transactions_pipeline_job.json</code> for the documented job-definition values. That existing repository file is referenced here but is not changed in this PR, so the concrete values below should be treated as point-in-time documentation and verified against the JSON if it changes. The diagram below highlights the two-task dependency chain only.</p>
   <div class="diagram no-break">
-    <svg viewBox="0 0 740 220" width="100%" xmlns="http://www.w3.org/2000/svg">
+    <svg viewBox="0 0 740 220" width="100%" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="job-title job-desc">
+      <title id="job-title">Databricks job task dependency diagram</title>
+      <desc id="job-desc">The documented Databricks job runs notebook ingestion first and then the dbt silver and gold task after ingest_bronze completes.</desc>
       <defs>
         <marker id="arrow2" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="strokeWidth">
           <path d="M0,0 L10,5 L0,10 z" fill="#1f6feb"/>
@@ -441,7 +445,7 @@ dbt build --target databricks</code></pre>
       </tbody>
     </table>
   </div>
-  <p>The broader conclusion is that dbt model contracts are expressed in the destination warehouse's type system. Cross-engine portability therefore requires explicit output normalization, not just SQL that “looks portable”.</p>
+  <p>The broader conclusion from the current repository state is that dbt model contracts are expressed in the destination warehouse's type system. Cross-engine portability therefore requires explicit output normalization, not just SQL that “looks portable”.</p>
 
   <h2>8. Key design decisions</h2>
   <div class="decision"><p><b><code>gte</code> instead of <code>gt</code>:</b> prevents permanent loss of records that share the exact watermark timestamp.</p></div>
