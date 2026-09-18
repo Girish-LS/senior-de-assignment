@@ -424,7 +424,7 @@ dbt build --target databricks</code></pre>
       </tbody>
     </table>
   </div>
-  <p>The referenced JSON is intended to document settings such as a daily <code>06:00 UTC</code> schedule, <code>max_concurrent_runs = 1</code>, failure email notifications, and a run-duration health rule that triggers when runtime exceeds <code>1800</code> seconds.</p>
+  <p>The referenced JSON also includes scheduling, concurrency, notification, and job-health settings alongside the task definitions.</p>
 
   <div class="section-break"></div>
   <h2>7. Portability findings from the DuckDB-first dbt path to Databricks</h2>
@@ -435,7 +435,7 @@ dbt build --target databricks</code></pre>
       </thead>
       <tbody>
         <tr><td><code>timestamp with time zone</code></td><td>DuckDB contract accepted a timezone-aware timestamp type.</td><td>Spark SQL does not expose that type in the same way. Resolved by normalizing the model output to plain <code>timestamp</code>.</td></tr>
-        <tr><td><code>VARCHAR</code> in the dbt contract/cast path</td><td>DuckDB accepted the generated <code>cast(null as varchar)</code> shape used by the model contract.</td><td>That specific Databricks/Spark path raised <code>DATATYPE_MISSING_SIZE</code>; the repo resolved it by declaring <code>string</code>, which Databricks accepts and DuckDB treats as an alias.</td></tr>
+        <tr><td><code>VARCHAR</code> in the dbt contract/cast path</td><td>DuckDB accepted the generated <code>cast(null as varchar)</code> shape used by the model contract.</td><td>That specific Databricks/Spark path raised <code>DATATYPE_MISSING_SIZE</code>; the repo resolved it by switching the checked-in model/contract typing to <code>string</code> for the Databricks-compatible path.</td></tr>
         <tr><td><code>listagg order_by</code></td><td>DuckDB honors ordering for the <code>currencies</code> list.</td><td>Spark/Databricks ignores <code>order_by_clause</code> in dbt's <code>listagg</code>. This remains documented rather than hidden.</td></tr>
         <tr><td>UTF-8 BOM</td><td>DuckDB tolerated files that started with a BOM.</td><td>Spark SQL parsing failed; the repo explicitly documents the issue and already handles BOMs in config file reading.</td></tr>
       </tbody>
